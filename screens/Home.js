@@ -40,6 +40,7 @@ const Home = () => {
   const {currentUser} = auth;
   const {rooms, setRooms} = useContext(Context);
   const unsubscribeRef = useRef(null);
+
   const onSignOut = async () => {
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
@@ -47,42 +48,44 @@ const Home = () => {
     }
     signOut(auth).catch(error => console.log('Error logging out: ', error));
   };
+
   const chatsQuery = query(
     collection(database, 'rooms'),
     where('participantsArray', 'array-contains', currentUser.email),
     orderBy('lastMessage.createdAt', 'desc'),
   );
-  //const LAST_UPDATED_AT = 'roomsUPD';
-  // useEffect(() => {
-  //   (async () => {
-  //     try {
-  //       // await AsyncStorage.clear();
-  //       let storedRooms = JSON.parse(
-  //         await AsyncStorage.getItem(`rooms_${auth.currentUser.uid}`),
-  //       );
-  //       //console.log('storedRooms', storedRooms);
-  //       if (storedRooms !== null && storedRooms?.length > 0) {
-  //         setRooms(storedRooms);
-  //       } else {
-  //         setRooms([]);
-  //         console.log('пусто');
-  //       }
-  //     } catch (error) {
-  //       console.error('Error getting stored rooms:', error);
-  //     }
-  //   })();
-  // }, []);
+
+  const LAST_UPDATED_AT = 'roomsUPD';
+  useEffect(() => {
+    (async () => {
+      try {
+        // await AsyncStorage.clear();
+        let storedRooms = JSON.parse(
+          await AsyncStorage.getItem(`rooms_${auth.currentUser.uid}`),
+        );
+        // console.log('storedRooms', storedRooms);
+        if (storedRooms !== null && storedRooms?.length > 0) {
+          setRooms(storedRooms);
+        } else {
+          setRooms([]);
+          console.log('пусто');
+        }
+      } catch (error) {
+        console.error('Error getting stored rooms:', error);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
       try {
-        let lastUpdatedAt = null//await AsyncStorage.getItem(
-        //   `${LAST_UPDATED_AT}_${auth.currentUser.uid}`,
-        // );
-        // console.log(
-        //   'lastupd',
-        //   timestamp(new Date(JSON.parse(lastUpdatedAt)).getTime()),
-        // );
+        let lastUpdatedAt = await AsyncStorage.getItem(
+          `${LAST_UPDATED_AT}_${auth.currentUser.uid}`,
+        );
+        console.log(
+          'lastupd',
+          timestamp(new Date(JSON.parse(lastUpdatedAt)).getTime()),
+        );
         const queryWithLastUpdatedAt =
           lastUpdatedAt != null
             ? query(
@@ -120,32 +123,33 @@ const Home = () => {
                 lastChatUpdatedAt.toDate(),
                 lastChatUpdatedAt,
               );
-              // await AsyncStorage.setItem(
-              //   `${LAST_UPDATED_AT}_${auth.currentUser.uid}`,
-              //   JSON.stringify(lastChatUpdatedAt.toDate()),
-              // );
-              // const updatedRooms = [...rooms];
-              // for (const chat of parsedChats) {
-              //   const roomIndex = updatedRooms.findIndex(
-              //     room => room.id === chat.id,
-              //   );
-              //   if (roomIndex !== -1) {
-              //     const updatedRoom = {
-              //       ...updatedRooms[roomIndex],
-              //       ...chat,
-              //     };
-              //     updatedRooms.splice(roomIndex, 1);
-              //     updatedRooms.push(updatedRoom);
-              //   } else {
-              //     updatedRooms.push(chat);
-              //   }
-              // }
-              // await AsyncStorage.setItem(
-              //   `rooms_${auth.currentUser.uid}`,
-              //   JSON.stringify(updatedRooms),
-              // );
-              // setRooms(updatedRooms);
-              setRooms(parsedChats);
+              await AsyncStorage.setItem(
+                `${LAST_UPDATED_AT}_${auth.currentUser.uid}`,
+                JSON.stringify(lastChatUpdatedAt.toDate()),
+              );
+              let storedRooms = JSON.parse(
+                await AsyncStorage.getItem(`rooms_${auth.currentUser.uid}`),
+              );
+              const updatedRooms = [...storedRooms];
+              for (let i = parsedChats.length - 1; i >= 0; i--) {
+                const roomIndex = updatedRooms.findIndex(
+                  room => room.id === parsedChats[i].id,
+                );
+                if (roomIndex !== -1) {
+                  updatedRooms.splice(roomIndex, 1);
+                  updatedRooms.unshift(parsedChats[i]);
+                } else {
+                  updatedRooms.unshift(parsedChats[i]);
+                }
+              }
+              // console.log(rooms, 'rooms');
+              // console.log(updatedRooms, 'updr');
+              await AsyncStorage.setItem(
+                `rooms_${auth.currentUser.uid}`,
+                JSON.stringify(updatedRooms),
+              );
+              setRooms(updatedRooms);
+              // setRooms(parsedChats);
             }
           },
         );

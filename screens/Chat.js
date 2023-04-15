@@ -29,6 +29,8 @@ import {useNavigation, useRoute} from '@react-navigation/native';
 import Avatar from '../components/Avatar';
 import ImageView from 'react-native-image-viewing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import crypto from 'react-native-quick-crypto';
+import { serverTimestamp } from "firebase/firestore";
 const randomId = nanoid();
 export default function Chat() {
   const [messages, setMessages] = useState([]);
@@ -42,6 +44,31 @@ export default function Chat() {
   const roomMessagesRef = collection(database, 'rooms', roomId, 'messages');
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedImageView, setSeletedImageView] = useState('');
+  // const keyPair = QuickCrypto.generateKeyPair('rsa', {
+  //   modulusLength: 2048,    // options
+  //   publicExponent: 0x10101,
+  //   publicKeyEncoding: {
+  //     type: 'pkcs1',
+  //     format: 'pem'
+  //   },
+  //   privateKeyEncoding: {
+  //     type: 'pkcs8',
+  //     format: 'pem',
+  //   }
+  // }, (err, publicKey, privateKey) => { // Callback function
+  //        if(!err)
+  //        {
+  //          // Prints new asymmetric key pair
+  //          console.log("Public Key is : ", publicKey);
+  //          console.log();
+  //          console.log("Private Key is: ", privateKey);
+  //        }
+  //        else
+  //        {
+  //          // Prints error
+  //          console.log("Errr is: ", err);
+  //        }
+  //   });
 
   // useEffect(() => {
   //   (async () => {
@@ -127,9 +154,9 @@ export default function Chat() {
           uid: currentUser.uid,
           displayName: currentUser.displayName,
           email: currentUser.email,
-          publicKey: JSON.parse(
-            await AsyncStorage.getItem('publicKey' + currentUser.uid),
-          ),
+          // publicKey: JSON.parse(
+          //   await AsyncStorage.getItem('publicKey' + currentUser.uid),
+          // ),
         };
         if (currentUser.photoURL) {
           currentUserData.photoURL = currentUser.photoURL;
@@ -138,7 +165,7 @@ export default function Chat() {
           uid: userB.userDoc.uid,
           displayName: userB.userDoc.displayName,
           email: userB.userDoc.email,
-          publicKey: userB.userDoc.publicKey,
+          // publicKey: userB.userDoc.publicKey,
         };
         if (userB.userDoc.photoURL) {
           userBData.photoURL = userB.userDoc.photoURL;

@@ -18,19 +18,19 @@ const Stack = createStackNavigator();
 
 function ChatStack() {
   const {user, setUser} = useContext(Context);
-  const [isLoadingKey, setIsLoadingKey] = useState(true);
-  useEffect(() => {
-    async function checkPublicKey() {
-      const publicKey = await AsyncStorage.getItem(`publicKey${user.uid}`);
-      const privateKey = await AsyncStorage.getItem(`privateKey${user.uid}`);
-      if (publicKey != null && privateKey != null) setIsLoadingKey(false);
-    }
-    checkPublicKey();
-  }, [user, setUser]);
+  // const [isLoadingKey, setIsLoadingKey] = useState(true);
+  // useEffect(() => {
+  //   async function checkPublicKey() {
+  //     const publicKey = await AsyncStorage.getItem(`publicKey${user.uid}`);
+  //     const privateKey = await AsyncStorage.getItem(`privateKey${user.uid}`);
+  //     if (publicKey != null && privateKey != null) setIsLoadingKey(false);
+  //   }
+  //   checkPublicKey();
+  // }, [user, setUser]);
   return (
     <Stack.Navigator /* defaultScreenOptions={Home} */>
       {/* {console.log(user, "ussrr")} */}
-      {isLoadingKey && (
+      {false && (
         <Stack.Screen name="LoadingKeyGen" component={LoadingScreen} />
       )}
       {!user.displayName && (
