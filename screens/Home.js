@@ -97,62 +97,58 @@ const Home = () => {
                 ),
               )
             : chatsQuery;
-        const unsubscribe = onSnapshot(
-          queryWithLastUpdatedAt,
-          async querySnapshot => {
-            const parsedChats = querySnapshot.docs.map((doc, i) => {
-              const userB =
-                doc
-                  .data()
-                  .participants.find(p => p.email !== currentUser.email) ||
-                doc
-                  .data()
-                  .participants.find(p => p.email === currentUser.email);
+        const unsubscribe = onSnapshot(queryWithLastUpdatedAt, async querySnapshot => {
+          const parsedChats = querySnapshot.docs.map((doc, i) => {
+            const userB =
+              doc
+                .data()
+                .participants.find(p => p.email !== currentUser.email) ||
+              doc.data().participants.find(p => p.email === currentUser.email);
 
-              return {
-                ...doc.data(),
-                id: doc.id,
-                userB,
-              };
-            });
-            // console.log(parsedChats, 'parsedChats');
-            if (parsedChats.length > 0) {
-              const lastChatUpdatedAt = parsedChats[0].lastMessage.createdAt;
-              console.log(
-                'NEW lastUPD',
-                lastChatUpdatedAt.toDate(),
-                lastChatUpdatedAt,
-              );
-              await AsyncStorage.setItem(
-                `${LAST_UPDATED_AT}_${auth.currentUser.uid}`,
-                JSON.stringify(lastChatUpdatedAt.toDate()),
-              );
-              let storedRooms = JSON.parse(
+            return {
+              ...doc.data(),
+              id: doc.id,
+              userB,
+            };
+          });
+          console.log(parsedChats, 'parsedChats');
+          if (parsedChats.length > 0) {
+            const lastChatUpdatedAt = parsedChats[0].lastMessage.createdAt;
+            console.log(
+              'NEW lastUPD',
+              lastChatUpdatedAt.toDate(),
+              lastChatUpdatedAt,
+            );
+            await AsyncStorage.setItem(
+              `${LAST_UPDATED_AT}_${auth.currentUser.uid}`,
+              JSON.stringify(lastChatUpdatedAt.toDate()),
+            );
+            let storedRooms =
+              JSON.parse(
                 await AsyncStorage.getItem(`rooms_${auth.currentUser.uid}`),
+              ) || [];
+            const updatedRooms = [...storedRooms];
+            for (let i = parsedChats.length - 1; i >= 0; i--) {
+              const roomIndex = updatedRooms.findIndex(
+                room => room.id === parsedChats[i].id,
               );
-              const updatedRooms = [...storedRooms];
-              for (let i = parsedChats.length - 1; i >= 0; i--) {
-                const roomIndex = updatedRooms.findIndex(
-                  room => room.id === parsedChats[i].id,
-                );
-                if (roomIndex !== -1) {
-                  updatedRooms.splice(roomIndex, 1);
-                  updatedRooms.unshift(parsedChats[i]);
-                } else {
-                  updatedRooms.unshift(parsedChats[i]);
-                }
+              if (roomIndex !== -1) {
+                updatedRooms.splice(roomIndex, 1);
+                updatedRooms.unshift(parsedChats[i]);
+              } else {
+                updatedRooms.unshift(parsedChats[i]);
               }
-              // console.log(rooms, 'rooms');
-              // console.log(updatedRooms, 'updr');
-              await AsyncStorage.setItem(
-                `rooms_${auth.currentUser.uid}`,
-                JSON.stringify(updatedRooms),
-              );
-              setRooms(updatedRooms);
-              // setRooms(parsedChats);
             }
-          },
-        );
+            // console.log(rooms, 'rooms');
+            console.log(updatedRooms, 'updr');
+            await AsyncStorage.setItem(
+              `rooms_${auth.currentUser.uid}`,
+              JSON.stringify(updatedRooms),
+            );
+            setRooms(updatedRooms);
+            // setRooms(parsedChats);
+          }
+        });
         unsubscribeRef.current = unsubscribe;
         return unsubscribe;
       } catch (error) {
@@ -203,8 +199,9 @@ const Home = () => {
   return (
     <View style={styles.container}>
       <View style={{flex: 1, padding: 5, paddingRight: 10}}>
-        {rooms.map(room => (
+        {rooms.map((room, i) => (
           <ListItem
+            id={i}
             type="chat"
             description={room.lastMessage?.text}
             key={room.id}

@@ -23,10 +23,10 @@ function ChatStack() {
   //   async function checkPublicKey() {
   //     const publicKey = await AsyncStorage.getItem(`publicKey${user.uid}`);
   //     const privateKey = await AsyncStorage.getItem(`privateKey${user.uid}`);
-  //     if (publicKey != null && privateKey != null) setIsLoadingKey(false);
+  //     if (publicKey == null || privateKey == null) setIsLoadingKey(false);
   //   }
   //   checkPublicKey();
-  // }, [user, setUser]);
+  // }, [user]);
   return (
     <Stack.Navigator /* defaultScreenOptions={Home} */>
       {/* {console.log(user, "ussrr")} */}
@@ -60,13 +60,13 @@ function RootNavigator() {
       auth,
       async authenticatedUser => {
         console.log(authenticatedUser);
-        if (authenticatedUser && !authenticatedUser.emailVerified) {
-          Alert.alert(
-            'Email not verified',
-            'Please verify your email before logging in.',
-          );
-          auth.signOut();
-        }
+        // if (authenticatedUser && !authenticatedUser.emailVerified) {
+        //   Alert.alert(
+        //     'Email not verified',
+        //     'Please verify your email before logging in.',
+        //   );
+        //   auth.signOut();
+        // }
         authenticatedUser
           ? (await AsyncStorage.setItem(
               'user',

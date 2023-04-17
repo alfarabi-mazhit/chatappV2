@@ -35,10 +35,13 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Give $(PRODUCT_NAME) permission to use your microphone. 
+			Your record wont be shared without your permission.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Allow access to camera</string>
 	<key>NSContactsUsageDescription</key>
-	<string>ppp</string>
+	<string>contacts</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

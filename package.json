@@ -16,6 +16,8 @@
     "firebase": "^9.19.1",
     "react": "18.2.0",
     "react-native": "0.71.6",
+    "react-native-actionsheet": "^2.4.2",
+    "react-native-audio-recorder-player": "^3.5.3",
     "react-native-contacts": "^7.0.5",
     "react-native-easy-grid": "^0.2.2",
     "react-native-gesture-handler": "^2.9.0",
