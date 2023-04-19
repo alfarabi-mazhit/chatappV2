@@ -99,6 +99,8 @@ const Home = () => {
             : chatsQuery;
         const unsubscribe = onSnapshot(queryWithLastUpdatedAt, async querySnapshot => {
           const parsedChats = querySnapshot.docs.map((doc, i) => {
+            console.log(doc.data().participants.find(p => p.email));
+
             const userB =
               doc
                 .data()

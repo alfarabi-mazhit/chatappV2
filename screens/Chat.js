@@ -15,6 +15,7 @@ import {
   doc,
   setDoc,
   addDoc,
+  getDoc,
   updateDoc,
   orderBy,
   query,
@@ -45,49 +46,52 @@ export default function Chat() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedImageView, setSeletedImageView] = useState('');
   const {currentUser} = auth;
-  const room = route.params.room;
+  let room = route.params.room;
   const userB = route.params.user;
   const roomId = room ? room.id : randomId;
   const roomRef = doc(database, 'rooms', roomId);
 
-  useEffect(() => {
-    const initializeChat = async () => {
-      if (!room) {
-        const currentUserData = {
-          uid: currentUser.uid,
-          displayName: currentUser.displayName,
-          email: currentUser.email,
-          // publicKey: JSON.parse(
-          //   await AsyncStorage.getItem('publicKey' + currentUser.uid),
-          // ),
-        };
-        if (currentUser.photoURL) {
-          currentUserData.photoURL = currentUser.photoURL;
-        }
-        const userBData = {
-          uid: userB.userDoc.uid,
-          displayName: userB.userDoc.displayName,
-          email: userB.userDoc.email,
-          // publicKey: userB.userDoc.publicKey,
-        };
-        if (userB.userDoc.photoURL) {
-          userBData.photoURL = userB.userDoc.photoURL;
-        }
-        const roomData = {
-          participants: [currentUserData, userBData],
-          participantsArray: [currentUser.email, userB.email],
-        };
-        try {
-          console.log(roomRef);
-          console.log(roomData);
-          await setDoc(roomRef, roomData);
-        } catch (error) {
-          console.log(error, 'fff');
-        }
+  // useEffect(() => {
+  const initializeChat = async () => {
+    if (!room) {
+      console.log('createroom');
+      const currentUserData = {
+        uid: currentUser.uid,
+        displayName: currentUser.displayName,
+        email: currentUser.email,
+        publicKey: JSON.parse(
+          await AsyncStorage.getItem('publicKey' + currentUser.uid),
+        ),
+      };
+      if (currentUser.photoURL) {
+        currentUserData.photoURL = currentUser.photoURL;
       }
-    };
-    initializeChat();
-  }, []);
+      const userBData = {
+        uid: userB.userDoc.uid,
+        displayName: userB.userDoc.displayName,
+        email: userB.userDoc.email,
+        publicKey: userB.userDoc.publicKey,
+      };
+      if (userB.userDoc.photoURL) {
+        userBData.photoURL = userB.userDoc.photoURL;
+      }
+      const roomData = {
+        participants: [currentUserData, userBData],
+        participantsArray: [currentUser.email, userB.email],
+      };
+      try {
+        console.log(roomRef);
+        console.log(roomData);
+        await setDoc(roomRef, roomData);
+        const roomDoc = await getDoc(roomRef);
+        room = roomDoc.data();
+      } catch (error) {
+        console.log(error, 'fff');
+      }
+    }
+  };
+  // initializeChat();
+  // }, []);
 
   useEffect(() => {
     (async () => {
@@ -143,7 +147,7 @@ export default function Chat() {
               createdAt: doc.data().createdAt.toDate(),
             };
           });
-          console.log(parsedMessages.length);
+          console.log(parsedMessages.length, parsedMessages);
           if (parsedMessages.length > 0) {
             const lastChatUpdatedAt = parsedMessages[0].createdAt;
             console.log('NEW lastMESSAGEUPD', lastChatUpdatedAt);
@@ -157,21 +161,36 @@ export default function Chat() {
                   `room${roomId}_${auth.currentUser.uid}`,
                 ),
               ) || [];
-            // const privKey = await AsyncStorage.getItem(`privateKey${auth.currentUser.uid}`);
-            const updatedMessages = [...storedMessages];
-            for (let i = parsedMessages.length - 1; i >= 0; i--) {
-              // if(parsedMessages[i].audio != null && parsedMessages[i].image != null){
-              // parsedMessages[i].text = crypto.privateDecrypt(privKey, Buffer.from(parsedMessages[i].text,'base64')) || parsedMessages[i].text;
-              // }
-              updatedMessages.unshift(parsedMessages[i]);
-            }
-            await AsyncStorage.setItem(
-              `room${roomId}_${auth.currentUser.uid}`,
-              JSON.stringify(updatedMessages),
+            const privKey = await AsyncStorage.getItem(
+              `privateKey${auth.currentUser.uid}`,
             );
-            console.log(storedMessages.length);
-            // setMessages(parsedMessages);
-            setMessages(updatedMessages);
+            const updatedMessages = [...storedMessages];
+            let c = 0;
+            for (let i = parsedMessages.length - 1; i >= 0; i--) {
+              if (parsedMessages[i].user._id !== auth.currentUser.email) {
+                if (
+                  parsedMessages[i].audio != null &&
+                  parsedMessages[i].image != null
+                ) {
+                  parsedMessages[i].text =
+                    crypto.privateDecrypt(
+                      privKey,
+                      Buffer.from(parsedMessages[i].text, 'base64'),
+                    ) || parsedMessages[i].text;
+                }
+                updatedMessages.unshift(parsedMessages[i]);
+                c++;
+              }
+            }
+            if (c) {
+              await AsyncStorage.setItem(
+                `room${roomId}_${auth.currentUser.uid}`,
+                JSON.stringify(updatedMessages),
+              );
+              console.log(storedMessages.length);
+              // setMessages(parsedMessages);
+              setMessages(updatedMessages);
+            }
           }
         },
       );
@@ -224,22 +243,50 @@ export default function Chat() {
 
   const onSend = useCallback(async (messagess = []) => {
     let {_id, createdAt, text, user} = messagess[0];
-    // const pubKey = room.userBData.publicKey;
-    // let enc = crypto.publicEncrypt(pubKey,Buffer.from(text,'base64'));
+    console.log(room);
+    if (!room) {
+      await initializeChat();
+    } else {
+      const roomDoc = await getDoc(roomRef);
+      room = roomDoc.data();
+    }
+    console.log(room, 'uygtf');
+    const pubKeyIndex =
+      room.participants.findIndex(
+        participant => participant.email !== auth.currentUser.email,
+      ) ||
+      room.participants.findIndex(
+        participant => participant.email == auth.currentUser.email,
+      );
+    const pubKey = room.participants[pubKeyIndex].publicKey;
+    console.log(pubKey, text);
+    let enc = crypto.publicEncrypt(pubKey, Buffer.from(text, 'base64'));
+    console.log(enc.toString('base64'));
     await Promise.all([
       addDoc(roomMessagesRef, {
         _id,
         createdAt,
-        text,
+        text: enc.toString('base64'),
         user,
       }),
-      updateDoc(roomRef, {lastMessage: {...messagess[0], text}}),
-    ]).catch(e => alert('Ошибка отправки...' + e));
-    // .then(
-    //   setMessages(previousMessages =>
-    //     GiftedChat.append(previousMessages, messagess),
-    //   ),
-    // );
+      updateDoc(roomRef, {
+        lastMessage: {...messagess[0], text: enc.toString('base64')},
+      }),
+    ])
+      .catch(e => alert('Ошибка отправки...' + e))
+      .then(async () => {
+        let mes =
+          JSON.parse(
+            await AsyncStorage.getItem(`room${roomId}_${auth.currentUser.uid}`),
+          ) || [];
+        // console.log('vsee', mes);
+        mes.unshift(messagess[0]);
+        setMessages(mes);
+        await AsyncStorage.setItem(
+          `room${roomId}_${auth.currentUser.uid}`,
+          JSON.stringify(mes),
+        );
+      });
   }, []);
 
   function renderSend(props) {
@@ -367,7 +414,21 @@ export default function Chat() {
     await Promise.all([
       addDoc(roomMessagesRef, message),
       updateDoc(roomRef, {lastMessage}),
-    ]);
+    ])
+      .catch(e => alert('Ошибка отправки...' + e))
+      .then(async () => {
+        let mes =
+          JSON.parse(
+            await AsyncStorage.getItem(`room${roomId}_${auth.currentUser.uid}`),
+          ) || [];
+        // console.log('vsee', mes);
+        mes.unshift(message);
+        setMessages(mes);
+        await AsyncStorage.setItem(
+          `room${roomId}_${auth.currentUser.uid}`,
+          JSON.stringify(mes),
+        );
+      });
   }
 
   const startRecording = async () => {
@@ -388,18 +449,18 @@ export default function Chat() {
     setRecordTime(0);
   };
 
-  const playAudio = async (path) => {
+  const playAudio = async path => {
     if (player) {
       await player.stopPlayer();
     }
     const result = await audioRecorderPlayer.startPlayer(path);
     if (result) {
-      audioRecorderPlayer.addPlayBackListener((e) => {
-      //   setRecordTime(formatTime(e.currentPosition / 1000));
-      console.log(e);
-      // if(e.currentPosition == e.duration){
-      //   setPressed(false);
-      // }
+      audioRecorderPlayer.addPlayBackListener(e => {
+        //   setRecordTime(formatTime(e.currentPosition / 1000));
+        console.log(e);
+        // if(e.currentPosition == e.duration){
+        //   setPressed(false);
+        // }
       });
       setPlayer(audioRecorderPlayer);
     }
@@ -462,7 +523,10 @@ export default function Chat() {
         return (
           <View
             style={{padding: 10, flexDirection: 'row', alignItems: 'center'}}>
-            <TouchableOpacity onPress={() => { playAudio(props.currentMessage.audio) }} >
+            <TouchableOpacity
+              onPress={() => {
+                playAudio(props.currentMessage.audio);
+              }}>
               {false ? (
                 <Entypo name="controller-stop" size={30} />
               ) : (

@@ -1,7 +1,7 @@
 import React, {useState, useContext, useEffect, memo} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createStackNavigator} from '@react-navigation/stack';
-import {View, ActivityIndicator, Alert} from 'react-native';
+import {View, ActivityIndicator, StyleSheet} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {onAuthStateChanged} from 'firebase/auth';
 import {auth} from './config/firebase';
@@ -18,21 +18,11 @@ const Stack = createStackNavigator();
 
 function ChatStack() {
   const {user, setUser} = useContext(Context);
-  // const [isLoadingKey, setIsLoadingKey] = useState(true);
-  // useEffect(() => {
-  //   async function checkPublicKey() {
-  //     const publicKey = await AsyncStorage.getItem(`publicKey${user.uid}`);
-  //     const privateKey = await AsyncStorage.getItem(`privateKey${user.uid}`);
-  //     if (publicKey == null || privateKey == null) setIsLoadingKey(false);
-  //   }
-  //   checkPublicKey();
-  // }, [user]);
+  const {checking, setChecking} = useContext(Context);
   return (
     <Stack.Navigator /* defaultScreenOptions={Home} */>
       {/* {console.log(user, "ussrr")} */}
-      {false && (
-        <Stack.Screen name="LoadingKeyGen" component={LoadingScreen} />
-      )}
+      {checking && <Stack.Screen name="LoadingScreen" component={LoadingScreen} />}
       {!user.displayName && (
         <Stack.Screen name="setProfile" component={SetProfile} />
       )}
@@ -44,6 +34,8 @@ function ChatStack() {
 }
 
 function AuthStack() {
+  const {checking, setChecking} = useContext(Context);
+  setChecking(true);
   return (
     <Stack.Navigator
       screenOptions={{headerShown: false, animationEnabled: false}}>
@@ -93,3 +85,11 @@ export default function App() {
     </Provider>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
