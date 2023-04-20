@@ -34,7 +34,11 @@ export function ListItem({
   return (
     <TouchableOpacity
       style={{height: 80, ...style}}
-      onLongPress={() => actionSheet.current.show()}
+      onLongPress={() => {
+        if (type !== 'contacts') {
+          actionSheet.current.show();
+        }
+      }}
       onPress={() =>
         type === 'contacts'
           ? navigation.replace('Chat', {user, room, image})
@@ -50,6 +54,9 @@ export function ListItem({
             <Col>
               <Text style={{fontWeight: 'bold', fontSize: 16}}>
                 {user.contactName || user.displayName}
+              </Text>
+              <Text style={{fontSize: 12}}>
+                {user.email}
               </Text>
             </Col>
             {time && (

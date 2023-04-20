@@ -62,6 +62,10 @@ const LoadingScreen = () => {
             // Prints new asymmetric key pair
             console.log('Public Key is : ', publicKey);
             console.log('Private Key is: ', privateKey);
+            let enc = QuickCrypto.publicEncrypt(publicKey, Buffer.from('alfa', 'base64'));
+            console.log(enc.toString('base64'),'proverka');
+            let dec = QuickCrypto.privateDecrypt(privateKey, Buffer.from(enc, 'base64'));
+            console.log(dec.toString('base64'),'proverka');
             await AsyncStorage.setItem(
               'publicKey' + auth.currentUser.uid,
               JSON.stringify(publicKey),

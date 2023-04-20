@@ -31,7 +31,7 @@ import {useNavigation, useRoute} from '@react-navigation/native';
 import Avatar from '../components/Avatar';
 import ImageView from 'react-native-image-viewing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// import crypto from 'react-native-quick-crypto';
+import crypto from 'react-native-quick-crypto';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 const audioRecorderPlayer = new AudioRecorderPlayer();
 
@@ -98,10 +98,11 @@ export default function Chat() {
       try {
         // await AsyncStorage.clear();
         // await AsyncStorage.setItem(`room${roomId}_${auth.currentUser.uid}`,'');
-        let storedMessages = JSON.parse(
-          await AsyncStorage.getItem(`room${roomId}_${auth.currentUser.uid}`),
-        );
-        // console.log('storedMessages', storedMessages);
+        let storedMessages = []
+        // JSON.parse(
+        //   await AsyncStorage.getItem(`room${roomId}_${auth.currentUser.uid}`),
+        // );
+        console.log('storedMessages', storedMessages);
         if (storedMessages !== null && storedMessages?.length > 0) {
           setMessages(storedMessages);
         } else {
@@ -156,37 +157,52 @@ export default function Chat() {
               JSON.stringify(lastChatUpdatedAt),
             );
             let storedMessages =
-              JSON.parse(
-                await AsyncStorage.getItem(
-                  `room${roomId}_${auth.currentUser.uid}`,
-                ),
-              ) || [];
-            const privKey = await AsyncStorage.getItem(
-              `privateKey${auth.currentUser.uid}`,
+              // JSON.parse(
+              //   await AsyncStorage.getItem(
+              //     `room${roomId}_${auth.currentUser.uid}`,
+              //   ),
+              // ) ||
+              [];
+            console.log('storedMessages', storedMessages);
+            const privKey = JSON.parse(
+              await AsyncStorage.getItem(`privateKey${auth.currentUser.uid}`),
             );
             const updatedMessages = [...storedMessages];
             let c = 0;
             for (let i = parsedMessages.length - 1; i >= 0; i--) {
               if (parsedMessages[i].user._id !== auth.currentUser.email) {
+              //   console.log(
+              //     parsedMessages[i].audio === undefined &&
+              //       parsedMessages[i].image === undefined,
+              //     parsedMessages[i].audio,
+              //     parsedMessages[i].image,
+              //     'imgaudio',
+              //   );
                 if (
-                  parsedMessages[i].audio != null &&
-                  parsedMessages[i].image != null
+                  parsedMessages[i].audio === undefined &&
+                  parsedMessages[i].image === undefined
                 ) {
+                  console.log(privKey, parsedMessages[i].text, 'KAAP');
                   parsedMessages[i].text =
-                    crypto.privateDecrypt(
-                      privKey,
-                      Buffer.from(parsedMessages[i].text, 'base64'),
-                    ) || parsedMessages[i].text;
+                    // crypto
+                    //   .privateDecrypt(
+                    //     privKey,
+                    //     Buffer.from(parsedMessages[i].text, 'base64'),
+                    //   )
+                    //   .toString('base64') ||
+                    parsedMessages[i].text;
+                  // console.log(,'coco');
                 }
                 updatedMessages.unshift(parsedMessages[i]);
                 c++;
               }
             }
-            if (c) {
-              await AsyncStorage.setItem(
-                `room${roomId}_${auth.currentUser.uid}`,
-                JSON.stringify(updatedMessages),
-              );
+            if (c > 0) {
+            console.log('updatedMessages', updatedMessages);
+            // await AsyncStorage.setItem(
+            //     `room${roomId}_${auth.currentUser.uid}`,
+            //     JSON.stringify(updatedMessages),
+            //   );
               console.log(storedMessages.length);
               // setMessages(parsedMessages);
               setMessages(updatedMessages);
@@ -207,11 +223,14 @@ export default function Chat() {
         <View
           style={{
             marginLeft: 15,
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'center',
           }}>
           <Text style={{color: '#fff'}}>
             {route.params.user.contactName || route.params.user.displayName}
+          </Text>
+          <Text style={{color: '#fff', fontSize: 12}}>
+            {route.params.user.email}
           </Text>
         </View>
       </View>
@@ -250,42 +269,42 @@ export default function Chat() {
       const roomDoc = await getDoc(roomRef);
       room = roomDoc.data();
     }
-    console.log(room, 'uygtf');
-    const pubKeyIndex =
-      room.participants.findIndex(
-        participant => participant.email !== auth.currentUser.email,
-      ) ||
-      room.participants.findIndex(
-        participant => participant.email == auth.currentUser.email,
-      );
-    const pubKey = room.participants[pubKeyIndex].publicKey;
-    console.log(pubKey, text);
-    let enc = crypto.publicEncrypt(pubKey, Buffer.from(text, 'base64'));
-    console.log(enc.toString('base64'));
+    // console.log(room, 'uygtf');
+    // const pubKeyIndex =
+    //   room.participants.findIndex(
+    //     participant => participant.email !== auth.currentUser.email,
+    //   ) ||
+    //   room.participants.findIndex(
+    //     participant => participant.email == auth.currentUser.email,
+    //   );
+    // const pubKey = room.participants[pubKeyIndex].publicKey;
+    // console.log(pubKey, text);
+    // let enc = crypto.publicEncrypt(pubKey, Buffer.from(text, 'base64'));
+    // console.log(enc.toString('base64'));
     await Promise.all([
       addDoc(roomMessagesRef, {
         _id,
         createdAt,
-        text: enc.toString('base64'),
+        text,//: enc.toString('base64'),
         user,
       }),
       updateDoc(roomRef, {
-        lastMessage: {...messagess[0], text: enc.toString('base64')},
+        lastMessage: {...messagess[0]/*, text: enc.toString('base64')*/},
       }),
     ])
       .catch(e => alert('Ошибка отправки...' + e))
       .then(async () => {
-        let mes =
-          JSON.parse(
-            await AsyncStorage.getItem(`room${roomId}_${auth.currentUser.uid}`),
-          ) || [];
-        // console.log('vsee', mes);
+        let mes = []
+      //     JSON.parse(
+      //       await AsyncStorage.getItem(`room${roomId}_${auth.currentUser.uid}`),
+      //     ) || [];
+      //   // console.log('vsee', mes);
         mes.unshift(messagess[0]);
         setMessages(mes);
-        await AsyncStorage.setItem(
-          `room${roomId}_${auth.currentUser.uid}`,
-          JSON.stringify(mes),
-        );
+      //   await AsyncStorage.setItem(
+      //     `room${roomId}_${auth.currentUser.uid}`,
+      //     JSON.stringify(mes),
+        // );
       });
   }, []);
 
@@ -418,16 +437,17 @@ export default function Chat() {
       .catch(e => alert('Ошибка отправки...' + e))
       .then(async () => {
         let mes =
-          JSON.parse(
-            await AsyncStorage.getItem(`room${roomId}_${auth.currentUser.uid}`),
-          ) || [];
+          // JSON.parse(
+          //   await AsyncStorage.getItem(`room${roomId}_${auth.currentUser.uid}`),
+          // ) || 
+          [];
         // console.log('vsee', mes);
         mes.unshift(message);
         setMessages(mes);
-        await AsyncStorage.setItem(
-          `room${roomId}_${auth.currentUser.uid}`,
-          JSON.stringify(mes),
-        );
+        // await AsyncStorage.setItem(
+        //   `room${roomId}_${auth.currentUser.uid}`,
+        //   JSON.stringify(mes),
+        // );
       });
   }
 
