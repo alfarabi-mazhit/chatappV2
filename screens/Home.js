@@ -164,7 +164,7 @@ const Home = () => {
       headerLeft: () => (
         <TouchableOpacity
           style={Object.assign({}, styles.chatButton, {marginLeft: 15})}>
-          <FontAwesome name="search" size={24} color={'#fff'} />
+          <FontAwesome name="star" size={24} color={'#fff'} />
         </TouchableOpacity>
       ),
       headerRight: () => (

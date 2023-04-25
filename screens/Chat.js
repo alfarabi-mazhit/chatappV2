@@ -33,6 +33,7 @@ import ImageView from 'react-native-image-viewing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import crypto from 'react-native-quick-crypto';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import {createDecipheriv} from 'react-native-quick-crypto/lib/typescript/Cipher';
 const audioRecorderPlayer = new AudioRecorderPlayer();
 
 export default function Chat() {
@@ -50,6 +51,21 @@ export default function Chat() {
   const userB = route.params.user;
   const roomId = room ? room.id : randomId;
   const roomRef = doc(database, 'rooms', roomId);
+  let key, iv, cipher, decipher;
+  function getUniqueMessages(messages) {
+    const uniqueMessages = [];
+    const ids = [];
+
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i];
+      if (!ids.includes(message._id)) {
+        uniqueMessages.unshift(message);
+        ids.push(message._id);
+      }
+    }
+
+    return uniqueMessages;
+  }
 
   // useEffect(() => {
   const initializeChat = async () => {
@@ -75,9 +91,33 @@ export default function Chat() {
       if (userB.userDoc.photoURL) {
         userBData.photoURL = userB.userDoc.photoURL;
       }
+      key = crypto.randomBytes(32); // 256-bit ключ
+      iv = crypto.randomBytes(16); // 128-bit вектор инициализации
+      await AsyncStorage.setItem(
+        'AESkey' + roomId.toString() + auth.currentUser.uid,
+        key.toString('base64'),
+      );
+      await AsyncStorage.setItem(
+        'AESiv' + roomId.toString() + auth.currentUser.uid,
+        iv.toString('base64'),
+      );
+      let encKey = crypto.publicEncrypt(
+        userBData.publicKey,
+        Buffer.from(key, 'base64'),
+      );
+      let encIv = crypto.publicEncrypt(
+        userBData.publicKey,
+        Buffer.from(iv, 'base64'),
+      );
+      let keygen = {
+        key: encKey.toString('base64'),
+        iv: encIv.toString('base64'),
+        createdby: auth.currentUser.email,
+      };
       const roomData = {
         participants: [currentUserData, userBData],
         participantsArray: [currentUser.email, userB.email],
+        keygen,
       };
       try {
         console.log(roomRef);
@@ -89,6 +129,29 @@ export default function Chat() {
         console.log(error, 'fff');
       }
     }
+    // key =
+    //   (await AsyncStorage.getItem(
+    //     'AESkey' + roomId.toString() + auth.currentUser.uid,
+    //   )) || null;
+    // iv =
+    //   (await AsyncStorage.getItem(
+    //     'AESiv' + roomId.toString() + auth.currentUser.uid,
+    //   )) || null;
+    if ((key == null || iv == null) && room) {
+      try {
+        let pk = await AsyncStorage.getItem(
+          'privatekey' + auth.currentUser.uid,
+        );
+        key = crypto
+          .privateDecrypt(pk, Buffer.from(room.keygen.key, 'base64'))
+          .toString();
+        iv = crypto
+          .privateDecrypt(pk, Buffer.from(room.keygen.iv, 'base64'))
+          .toString();
+      } catch (e) {
+        console.log(e);
+      }
+    }
   };
   // initializeChat();
   // }, []);
@@ -98,10 +161,10 @@ export default function Chat() {
       try {
         // await AsyncStorage.clear();
         // await AsyncStorage.setItem(`room${roomId}_${auth.currentUser.uid}`,'');
-        let storedMessages = []
-        // JSON.parse(
-        //   await AsyncStorage.getItem(`room${roomId}_${auth.currentUser.uid}`),
-        // );
+        let storedMessages =
+          JSON.parse(
+            await AsyncStorage.getItem(`room${roomId}_${auth.currentUser.uid}`),
+          ) || [];
         console.log('storedMessages', storedMessages);
         if (storedMessages !== null && storedMessages?.length > 0) {
           setMessages(storedMessages);
@@ -111,6 +174,42 @@ export default function Chat() {
         }
       } catch (error) {
         console.error('Error getting stored messages:', error);
+      }
+      key =
+        (await AsyncStorage.getItem(
+          'AESkey' + roomId.toString() + auth.currentUser.uid,
+        )) || null;
+      iv =
+        (await AsyncStorage.getItem(
+          'AESiv' + roomId.toString() + auth.currentUser.uid,
+        )) || null;
+      console.log(key, iv, 'AESkeys');
+      if (key == null || iv == null && room) {
+        //console.log(room.keygen.key, '\n', room.keygen.iv);
+        try {
+          let pk = JSON.parse(
+            await AsyncStorage.getItem('privateKey' + auth.currentUser.uid),
+          );
+          key = crypto.privateDecrypt(
+            pk,
+            Buffer.from(room.keygen.key, 'base64'),
+          );
+          iv = crypto.privateDecrypt(pk, Buffer.from(room.keygen.iv, 'base64'));
+          await AsyncStorage.setItem(
+            'AESkey' + roomId.toString() + auth.currentUser.uid,
+            key.toString('base64'),
+          );
+          await AsyncStorage.setItem(
+            'AESiv' + roomId.toString() + auth.currentUser.uid,
+            iv.toString('base64'),
+          );
+        } catch (e) {
+          console.log(e);
+        }
+      } else {
+        key = Buffer.from(key, 'base64');
+        iv = Buffer.from(iv, 'base64');
+        console.log(key, iv,'aeskeyss');
       }
     })();
   }, []);
@@ -157,55 +256,60 @@ export default function Chat() {
               JSON.stringify(lastChatUpdatedAt),
             );
             let storedMessages =
-              // JSON.parse(
-              //   await AsyncStorage.getItem(
-              //     `room${roomId}_${auth.currentUser.uid}`,
-              //   ),
-              // ) ||
-              [];
+              JSON.parse(
+                await AsyncStorage.getItem(
+                  `room${roomId}_${auth.currentUser.uid}`,
+                ),
+              ) || [];
             console.log('storedMessages', storedMessages);
-            const privKey = JSON.parse(
-              await AsyncStorage.getItem(`privateKey${auth.currentUser.uid}`),
-            );
             const updatedMessages = [...storedMessages];
             let c = 0;
             for (let i = parsedMessages.length - 1; i >= 0; i--) {
               if (parsedMessages[i].user._id !== auth.currentUser.email) {
-              //   console.log(
-              //     parsedMessages[i].audio === undefined &&
-              //       parsedMessages[i].image === undefined,
-              //     parsedMessages[i].audio,
-              //     parsedMessages[i].image,
-              //     'imgaudio',
-              //   );
+                //   console.log(
+                //     parsedMessages[i].audio === undefined &&
+                //       parsedMessages[i].image === undefined,
+                //     parsedMessages[i].audio,
+                //     parsedMessages[i].image,
+                //     'imgaudio',
+                //   );
                 if (
                   parsedMessages[i].audio === undefined &&
                   parsedMessages[i].image === undefined
                 ) {
-                  console.log(privKey, parsedMessages[i].text, 'KAAP');
+                  // console.log(privKey, parsedMessages[i].text, 'KAAP');
+                  decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
                   parsedMessages[i].text =
-                    // crypto
-                    //   .privateDecrypt(
-                    //     privKey,
-                    //     Buffer.from(parsedMessages[i].text, 'base64'),
-                    //   )
-                    //   .toString('base64') ||
-                    parsedMessages[i].text;
+                    Buffer.concat([
+                      decipher.update(
+                        Buffer.from(parsedMessages[i].text, 'base64'),
+                      ),
+                      decipher.final(),
+                    ]).toString() || parsedMessages[i].text;
+                  // crypto
+                  //   .privateDecrypt(
+                  //     privKey,
+                  //     Buffer.from(parsedMessages[i].text, 'base64'),
+                  //   )
+                  //   .toString('base64') ||
+                  // parsedMessages[i].text;
                   // console.log(,'coco');
+                } else if (parsedMessages[i].image !== undefined) {
                 }
                 updatedMessages.unshift(parsedMessages[i]);
                 c++;
               }
             }
             if (c > 0) {
-            console.log('updatedMessages', updatedMessages);
-            // await AsyncStorage.setItem(
-            //     `room${roomId}_${auth.currentUser.uid}`,
-            //     JSON.stringify(updatedMessages),
-            //   );
-              console.log(storedMessages.length);
+              console.log('updatedMessages', updatedMessages);
+              await AsyncStorage.setItem(
+                `room${roomId}_${auth.currentUser.uid}`,
+                JSON.stringify(updatedMessages),
+              );
+              console.log(updatedMessages, updatedMessages.length, 'qoqo');
+              const uniqueMessages = getUniqueMessages(updatedMessages);
               // setMessages(parsedMessages);
-              setMessages(updatedMessages);
+              setMessages(uniqueMessages);
             }
           }
         },
@@ -269,6 +373,10 @@ export default function Chat() {
       const roomDoc = await getDoc(roomRef);
       room = roomDoc.data();
     }
+    cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+    let enc = Buffer.concat([cipher.update(text), cipher.final()]).toString(
+      'base64',
+    );
     // console.log(room, 'uygtf');
     // const pubKeyIndex =
     //   room.participants.findIndex(
@@ -285,26 +393,27 @@ export default function Chat() {
       addDoc(roomMessagesRef, {
         _id,
         createdAt,
-        text,//: enc.toString('base64'),
+        text: enc,
         user,
       }),
       updateDoc(roomRef, {
-        lastMessage: {...messagess[0]/*, text: enc.toString('base64')*/},
+        lastMessage: {...messagess[0], text: enc},
       }),
     ])
       .catch(e => alert('Ошибка отправки...' + e))
       .then(async () => {
-        let mes = []
-      //     JSON.parse(
-      //       await AsyncStorage.getItem(`room${roomId}_${auth.currentUser.uid}`),
-      //     ) || [];
-      //   // console.log('vsee', mes);
+        let mes =
+          JSON.parse(
+            await AsyncStorage.getItem(`room${roomId}_${auth.currentUser.uid}`),
+          ) || [];
+        // console.log('vsee', mes);
         mes.unshift(messagess[0]);
-        setMessages(mes);
-      //   await AsyncStorage.setItem(
-      //     `room${roomId}_${auth.currentUser.uid}`,
-      //     JSON.stringify(mes),
-        // );
+        const uniqueMessages = getUniqueMessages(mes);
+        setMessages(uniqueMessages);
+        await AsyncStorage.setItem(
+          `room${roomId}_${auth.currentUser.uid}`,
+          JSON.stringify(uniqueMessages),
+        );
       });
   }, []);
 
@@ -406,11 +515,12 @@ export default function Chat() {
       />
     );
   }
-  async function sendMedia(uri, mediaType, time) {
+  async function sendMedia(uri, mediaType, time, fName) {
     const {url, fileName} = await uploadMedia(
       uri,
       `media/rooms/${roomId}`,
       mediaType,
+      fName,
     );
     const message = {
       _id: fileName,
@@ -437,17 +547,20 @@ export default function Chat() {
       .catch(e => alert('Ошибка отправки...' + e))
       .then(async () => {
         let mes =
-          // JSON.parse(
-          //   await AsyncStorage.getItem(`room${roomId}_${auth.currentUser.uid}`),
-          // ) || 
-          [];
+          JSON.parse(
+            await AsyncStorage.getItem(`room${roomId}_${auth.currentUser.uid}`),
+          ) || [];
         // console.log('vsee', mes);
+        if (mediaType === 'image') {
+          message.mediaType = uri;
+        }
         mes.unshift(message);
-        setMessages(mes);
-        // await AsyncStorage.setItem(
-        //   `room${roomId}_${auth.currentUser.uid}`,
-        //   JSON.stringify(mes),
-        // );
+        const uniqueMessages = getUniqueMessages(mes);
+        setMessages(uniqueMessages);
+        await AsyncStorage.setItem(
+          `room${roomId}_${auth.currentUser.uid}`,
+          JSON.stringify(uniqueMessages),
+        );
       });
   }
 
@@ -500,9 +613,15 @@ export default function Chat() {
   };
 
   async function handlePhotoPicker() {
-    const result = await pickImg();
-    if (!result.canceled) {
-      await sendMedia(result.assets[0].uri, 'image');
+    if (!room) {
+      await initializeChat();
+    }
+    const {filePath, fileName} = await pickImg(auth.currentUser.uid, roomId);
+
+    console.log(filePath,'filep',filePath && fileName);
+    if (filePath && fileName) {
+      console.log(filePath,'filep');
+      await sendMedia(filePath, 'image', 0, fileName);
     }
   }
   function renderActions(props) {
@@ -525,6 +644,7 @@ export default function Chat() {
       messages={messages}
       showAvatarForEveryMessage={false}
       showUserAvatar={false}
+      textInputProps={{autoCapitalize: 'none'}}
       alwaysShowSend
       locale="kk"
       renderSend={renderSend}

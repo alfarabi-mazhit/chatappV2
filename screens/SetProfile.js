@@ -1,9 +1,9 @@
-import {View, Text, Button, Image} from 'react-native';
+import {View, Text, Button, Image, Alert} from 'react-native';
 import React, {useEffect, useState} from 'react';
 import {useNavigation} from '@react-navigation/native';
 import {FadeInView} from '../components/FadeInView';
 import {TextInput, TouchableOpacity} from 'react-native-gesture-handler';
-import {pickImg, uploadImage} from '../components/utils';
+import {pickImgg, uploadImage} from '../components/utils';
 import {auth, database} from '../config/firebase';
 import {updateProfile} from '@firebase/auth';
 import {doc, setDoc, getDoc} from 'firebase/firestore';
@@ -25,12 +25,7 @@ export default function SetProfile() {
     const user = auth.currentUser;
     let photoURL;
     if (selectedImg) {
-      const {url} = await uploadImage(
-        selectedImg,
-        `images/users/${user.uid}`,
-        'profilePicture',
-      );
-      photoURL = url;
+      photoURL = selectedImg;
     }
     const userData = {
       displayName,
@@ -47,30 +42,24 @@ export default function SetProfile() {
     } else {
       await setDoc(docRef, {...userData});
     }
-    await Promise.all([
-      updateProfile(user, userData),
-    ])
+    await Promise.all([updateProfile(user, userData)])
       .then(navigation.navigate('Home'))
       .catch(e => {
         alert('Ошибка соединения. Повторите позже'), setButton(false);
       });
   }
-
   async function handleProfilePicture() {
     try {
-      const result = await pickImg({
-        mediaType: 'photo',
-        quality: 0.5,
-        includeBase64: false,
-      });
+      const result = await pickImgg();
       if (!result.didCancel) {
         console.log(result);
-        const uploadResult = await uploadImage(result.uri, 'profile_pictures');
+        Alert.alert('',result);
+        const uploadResult = await uploadImage(result.assets[0].uri, 'images/users/'+auth.currentUser.uid+'/');
         setSelectedImg(uploadResult.url);
       }
     } catch (error) {
       console.log(error);
-      alert('Failed to get image');
+      Alert.alert('','Failed to get image' + error);
     }
   }
 
