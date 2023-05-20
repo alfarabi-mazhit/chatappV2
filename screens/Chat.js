@@ -33,7 +33,7 @@ import ImageView from 'react-native-image-viewing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import crypto from 'react-native-quick-crypto';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
-import {createDecipheriv} from 'react-native-quick-crypto/lib/typescript/Cipher';
+import RNFS from 'react-native-fs';
 const audioRecorderPlayer = new AudioRecorderPlayer();
 
 export default function Chat() {
@@ -112,6 +112,8 @@ export default function Chat() {
       let keygen = {
         key: encKey.toString('base64'),
         iv: encIv.toString('base64'),
+        // key: key.toString('base64'),
+        // iv: iv.toString('base64'),
         createdby: auth.currentUser.email,
       };
       const roomData = {
@@ -142,12 +144,8 @@ export default function Chat() {
         let pk = await AsyncStorage.getItem(
           'privatekey' + auth.currentUser.uid,
         );
-        key = crypto
-          .privateDecrypt(pk, Buffer.from(room.keygen.key, 'base64'))
-          .toString();
-        iv = crypto
-          .privateDecrypt(pk, Buffer.from(room.keygen.iv, 'base64'))
-          .toString();
+        key = crypto.privateDecrypt(pk, Buffer.from(room.keygen.key, 'base64'));
+        iv = crypto.privateDecrypt(pk, Buffer.from(room.keygen.iv, 'base64'));
       } catch (e) {
         console.log(e);
       }
@@ -155,7 +153,25 @@ export default function Chat() {
   };
   // initializeChat();
   // }, []);
-
+  let getKeys = async () => {
+    try {
+      let pk = JSON.parse(
+        await AsyncStorage.getItem('privateKey' + auth.currentUser.uid),
+      );
+      key = crypto.privateDecrypt(pk, Buffer.from(room.keygen.key, 'base64'));
+      iv = crypto.privateDecrypt(pk, Buffer.from(room.keygen.iv, 'base64'));
+      await AsyncStorage.setItem(
+        'AESkey' + roomId.toString() + auth.currentUser.uid,
+        key.toString('base64'),
+      );
+      await AsyncStorage.setItem(
+        'AESiv' + roomId.toString() + auth.currentUser.uid,
+        iv.toString('base64'),
+      );
+    } catch (e) {
+      console.log(e, 'jvh');
+    }
+  };
   useEffect(() => {
     (async () => {
       try {
@@ -165,6 +181,7 @@ export default function Chat() {
           JSON.parse(
             await AsyncStorage.getItem(`room${roomId}_${auth.currentUser.uid}`),
           ) || [];
+        storedMessages = getUniqueMessages(storedMessages);
         console.log('storedMessages', storedMessages);
         if (storedMessages !== null && storedMessages?.length > 0) {
           setMessages(storedMessages);
@@ -184,32 +201,13 @@ export default function Chat() {
           'AESiv' + roomId.toString() + auth.currentUser.uid,
         )) || null;
       console.log(key, iv, 'AESkeys');
-      if (key == null || iv == null && room) {
+      if ((key == null || iv == null) && room) {
         //console.log(room.keygen.key, '\n', room.keygen.iv);
-        try {
-          let pk = JSON.parse(
-            await AsyncStorage.getItem('privateKey' + auth.currentUser.uid),
-          );
-          key = crypto.privateDecrypt(
-            pk,
-            Buffer.from(room.keygen.key, 'base64'),
-          );
-          iv = crypto.privateDecrypt(pk, Buffer.from(room.keygen.iv, 'base64'));
-          await AsyncStorage.setItem(
-            'AESkey' + roomId.toString() + auth.currentUser.uid,
-            key.toString('base64'),
-          );
-          await AsyncStorage.setItem(
-            'AESiv' + roomId.toString() + auth.currentUser.uid,
-            iv.toString('base64'),
-          );
-        } catch (e) {
-          console.log(e);
-        }
-      } else {
+        getKeys();
+      } else if (key != null && iv != null && room) {
         key = Buffer.from(key, 'base64');
         iv = Buffer.from(iv, 'base64');
-        console.log(key, iv,'aeskeyss');
+        console.log(key, iv, 'aeskeyss');
       }
     })();
   }, []);
@@ -264,6 +262,9 @@ export default function Chat() {
             console.log('storedMessages', storedMessages);
             const updatedMessages = [...storedMessages];
             let c = 0;
+            if (key == null || iv == null) {
+              getKeys();
+            }
             for (let i = parsedMessages.length - 1; i >= 0; i--) {
               if (parsedMessages[i].user._id !== auth.currentUser.email) {
                 //   console.log(
@@ -278,14 +279,19 @@ export default function Chat() {
                   parsedMessages[i].image === undefined
                 ) {
                   // console.log(privKey, parsedMessages[i].text, 'KAAP');
-                  decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-                  parsedMessages[i].text =
-                    Buffer.concat([
-                      decipher.update(
-                        Buffer.from(parsedMessages[i].text, 'base64'),
-                      ),
-                      decipher.final(),
-                    ]).toString() || parsedMessages[i].text;
+                  try {
+                    decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+                    parsedMessages[i].text =
+                      Buffer.concat([
+                        decipher.update(
+                          Buffer.from(parsedMessages[i].text, 'base64'),
+                        ),
+                        decipher.final(),
+                      ]).toString() || parsedMessages[i].text;
+                  } catch (error) {
+                    console.log(error);
+                  }
+
                   // crypto
                   //   .privateDecrypt(
                   //     privKey,
@@ -294,20 +300,76 @@ export default function Chat() {
                   //   .toString('base64') ||
                   // parsedMessages[i].text;
                   // console.log(,'coco');
-                } else if (parsedMessages[i].image !== undefined) {
+                } else {
+                  const userDirectory = `file://${RNFS.DocumentDirectoryPath}/users/${auth.currentUser.uid}`;
+                  const roomDirectory = `${userDirectory}/rooms/${roomId}`;
+                  if (!(await RNFS.exists(roomDirectory))) {
+                    await RNFS.mkdir(roomDirectory, {intermediates: true});
+                  }
+                  const fileName = nanoid();
+                  let format, fromUrl;
+                  if (parsedMessages[i].image !== undefined) {
+                    // format = parsedMessages[i].image.slice(
+                    //   parsedMessages[i].image.lastIndexOf('.'),
+                    // );
+                    format = 'jpeg';
+                    fromUrl = parsedMessages[i].image;
+                  } else if (parsedMessages[i].audio !== undefined) {
+                    format = 'mp4';
+                    fromUrl = parsedMessages[i].audio;
+                  }
+                  const filePath = `${roomDirectory}/${fileName}.${format}`;
+                  console.log('door', filePath);
+                  const options = {
+                    fromUrl,
+                    toFile: filePath,
+                    background: true,
+                    cacheable: true,
+                  };
+                  await RNFS.downloadFile(options)
+                    .promise.then(res => {
+                      console.log('File downloaded to: ', filePath, res);
+                    })
+                    .catch(e => {
+                      console.log(e);
+                    });
+                  const Data = await RNFS.readFile(filePath, 'base64');
+                  const ArrayBuffer = Buffer.from(Data, 'base64');
+                  console.log(key, iv);
+                  console.log(
+                    'yui',
+                    key.toString('base64'),
+                    iv.toString('base64'),
+                  );
+                  decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+                  const decrypted = Buffer.concat([
+                    decipher.update(ArrayBuffer),
+                    decipher.final(),
+                  ]);
+                  await RNFS.writeFile(
+                    filePath + `.${format}`,
+                    decrypted.toString('base64'),
+                    'base64',
+                  );
+                  if (parsedMessages[i].image !== undefined) {
+                    parsedMessages[i].image = filePath + `.${format}`;
+                    console.log('IMAGEE');
+                  } else if (parsedMessages[i].audio !== undefined) {
+                    parsedMessages[i].audio = filePath + `.${format}`;
+                    console.log('AUDIOOO');
+                  }
                 }
                 updatedMessages.unshift(parsedMessages[i]);
                 c++;
               }
             }
             if (c > 0) {
-              console.log('updatedMessages', updatedMessages);
+              const uniqueMessages = getUniqueMessages(updatedMessages);
+              console.log('updatedUniqMessages', uniqueMessages);
               await AsyncStorage.setItem(
                 `room${roomId}_${auth.currentUser.uid}`,
-                JSON.stringify(updatedMessages),
+                JSON.stringify(uniqueMessages),
               );
-              console.log(updatedMessages, updatedMessages.length, 'qoqo');
-              const uniqueMessages = getUniqueMessages(updatedMessages);
               // setMessages(parsedMessages);
               setMessages(uniqueMessages);
             }
@@ -397,7 +459,7 @@ export default function Chat() {
         user,
       }),
       updateDoc(roomRef, {
-        lastMessage: {...messagess[0], text: enc},
+        lastMessage: {...messagess[0], text: 'Text💬'},
       }),
     ])
       .catch(e => alert('Ошибка отправки...' + e))
@@ -406,7 +468,6 @@ export default function Chat() {
           JSON.parse(
             await AsyncStorage.getItem(`room${roomId}_${auth.currentUser.uid}`),
           ) || [];
-        // console.log('vsee', mes);
         mes.unshift(messagess[0]);
         const uniqueMessages = getUniqueMessages(mes);
         setMessages(uniqueMessages);
@@ -516,7 +577,9 @@ export default function Chat() {
     );
   }
   async function sendMedia(uri, mediaType, time, fName) {
+    console.log('myurl', uri);
     const {url, fileName} = await uploadMedia(
+      roomId,
       uri,
       `media/rooms/${roomId}`,
       mediaType,
@@ -551,9 +614,7 @@ export default function Chat() {
             await AsyncStorage.getItem(`room${roomId}_${auth.currentUser.uid}`),
           ) || [];
         // console.log('vsee', mes);
-        if (mediaType === 'image') {
-          message.mediaType = uri;
-        }
+        message[mediaType] = uri;
         mes.unshift(message);
         const uniqueMessages = getUniqueMessages(mes);
         setMessages(uniqueMessages);
@@ -565,20 +626,26 @@ export default function Chat() {
   }
 
   const startRecording = async () => {
-    const result = await audioRecorderPlayer.startRecorder();
+    const userDirectory = `file://${RNFS.DocumentDirectoryPath}/users/${auth.currentUser.uid}`;
+    const roomDirectory = `${userDirectory}/rooms/${roomId}`;
+    if (!(await RNFS.exists(roomDirectory))) {
+      await RNFS.mkdir(roomDirectory, {intermediates: true});
+    }
+    const fileName = nanoid();
+    const filePath = `${roomDirectory}/${fileName}.mp4`;
+    await audioRecorderPlayer.startRecorder(filePath);
     audioRecorderPlayer.addRecordBackListener(e => {
       setRecordTime(Math.floor(e.currentPosition));
       console.log('Record back event received: ', e);
     });
-    setAudioPath(result);
+    setAudioPath(filePath);
   };
 
   const stopRecording = async () => {
     audioRecorderPlayer.removeRecordBackListener();
-    console.log('stop');
-    const result = await audioRecorderPlayer.stopRecorder();
-    setAudioPath(result);
-    sendMedia(result, 'audio', recordTime);
+    console.log('stop', audioPath);
+    await audioRecorderPlayer.stopRecorder();
+    sendMedia(audioPath, 'audio', recordTime);
     setRecordTime(0);
   };
 
@@ -586,6 +653,7 @@ export default function Chat() {
     if (player) {
       await player.stopPlayer();
     }
+    console.log(path, 'jk');
     const result = await audioRecorderPlayer.startPlayer(path);
     if (result) {
       audioRecorderPlayer.addPlayBackListener(e => {
@@ -618,9 +686,9 @@ export default function Chat() {
     }
     const {filePath, fileName} = await pickImg(auth.currentUser.uid, roomId);
 
-    console.log(filePath,'filep',filePath && fileName);
+    console.log(filePath, 'filep', filePath && fileName);
     if (filePath && fileName) {
-      console.log(filePath,'filep');
+      console.log(filePath, 'filep');
       await sendMedia(filePath, 'image', 0, fileName);
     }
   }

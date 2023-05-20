@@ -6,7 +6,7 @@ import {TextInput, TouchableOpacity} from 'react-native-gesture-handler';
 import {pickImgg, uploadImage} from '../components/utils';
 import {auth, database} from '../config/firebase';
 import {updateProfile} from '@firebase/auth';
-import {doc, setDoc, getDoc} from 'firebase/firestore';
+import {doc, setDoc,updateDoc, getDoc} from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function SetProfile() {
@@ -31,6 +31,7 @@ export default function SetProfile() {
       displayName,
       email: user.email,
       publicKey: JSON.parse(await AsyncStorage.getItem('publicKey' + user.uid)),
+      uid: user.uid,
     };
     if (photoURL) {
       userData.photoURL = photoURL;

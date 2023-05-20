@@ -1,11 +1,11 @@
 import * as ImgPicker from 'react-native-image-picker';
 import {nanoid} from 'nanoid';
 import {ref, uploadBytes, getDownloadURL} from 'firebase/storage';
-import {storage} from '../config/firebase';
+import {auth, storage} from '../config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import crypto from 'react-native-quick-crypto';
 import RNFS from 'react-native-fs';
-import { Alert } from 'react-native';
+import {Alert} from 'react-native';
 export async function pickImgg() {
   return new Promise((resolve, reject) => {
     const options = {
@@ -72,11 +72,10 @@ export async function uploadImage(uri, path, fName) {
   const url = await getDownloadURL(snapshot.ref);
   return {url};
 }
-export async function uploadMedia(uri, path, mediaType, fName) {
-  if (mediaType === 'image') {
-    try {
-      const imageData = await RNFS.readFile(uri, 'base64');
-    const imageBuffer = Buffer.from(imageData, 'base64');
+export async function uploadMedia(roomId, uri, path, mediaType, fName) {
+  try {
+    const Data = await RNFS.readFile(uri, 'base64');
+    const ArrayBuffer = Buffer.from(Data, 'base64');
     let key =
       (await AsyncStorage.getItem(
         'AESkey' + roomId.toString() + auth.currentUser.uid,
@@ -88,30 +87,24 @@ export async function uploadMedia(uri, path, mediaType, fName) {
     key = Buffer.from(key, 'base64');
     iv = Buffer.from(iv, 'base64');
     const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-    const encryptedImage = Buffer.concat([
-      cipher.update(imageBuffer),
+    const encrypted = Buffer.concat([
+      cipher.update(ArrayBuffer),
       cipher.final(),
     ]);
+    await RNFS.writeFile(
+      uri + `${mediaType === 'image' ? '.jpeg' : '.mp4'}`,
+      encrypted.toString('base64'),
+      'base64',
+    );
     const fileName = fName || nanoid();
     const mediaRef = ref(
       storage,
-      `${path}/${fileName}${mediaType === 'image' ? '.jpeg' : '.m4a'}`,
+      `${path}/${fileName}${mediaType === 'image' ? '.jpeg' : '.mp4'}`,
     );
-    // Создание объекта Blob из зашифрованного изображения
-    const blob = new Blob([encryptedImage], {
-      type: mediaType === 'image' ? 'image/jpeg' : 'audio/m4a',
-    });
-    // Загрузка зашифрованного изображения на сервер
-    const snapshot = await uploadBytes(mediaRef, blob, {
-      contentType: mediaType === 'image' ? 'image/jpeg' : 'audio/m4a',
-    });
-    const url = await getDownloadURL(snapshot.ref);
-    return {url, fileName};
-    } catch (error) {
-      Alert.alert('',error)
-    }
-    
-  } else {
+    // Создание объекта Blob из зашифрованного
+    // const blob = new Blob([encrypted.toString('base64')], {
+    //   type: mediaType === 'image' ? 'image/jpeg' : 'video/mp4',
+    // });
     const blob = await new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.onload = function () {
@@ -122,19 +115,45 @@ export async function uploadMedia(uri, path, mediaType, fName) {
         reject(new TypeError('Network request failed'));
       };
       xhr.responseType = 'blob';
-      xhr.open('GET', uri, true);
+      xhr.open('GET', uri + `${mediaType === 'image' ? '.jpeg' : '.mp4'}`, true);
       xhr.send(null);
     });
-    const fileName = nanoid();
-    const mediaRef = ref(
-      storage,
-      `${path}/${fileName}${mediaType === 'image' ? '.jpeg' : '.m4a'}`,
-    );
+    // Загрузка зашифрованного  на сервер
     const snapshot = await uploadBytes(mediaRef, blob, {
-      contentType: mediaType === 'image' ? 'image/jpeg' : 'audio/m4a',
+      contentType: mediaType === 'image' ? 'image/jpeg' : 'video/mp4',
     });
     blob.close();
     const url = await getDownloadURL(snapshot.ref);
+    console.log('firefire', url);
     return {url, fileName};
+  } catch (error) {
+    Alert.alert('', error);
   }
 }
+// } else {
+//   const blob = await new Promise((resolve, reject) => {
+//     const xhr = new XMLHttpRequest();
+//     xhr.onload = function () {
+//       resolve(xhr.response);
+//     };
+//     xhr.onerror = function (e) {
+//       console.log(e);
+//       reject(new TypeError('Network request failed'));
+//     };
+//     xhr.responseType = 'blob';
+//     xhr.open('GET', uri, true);
+//     xhr.send(null);
+//   });
+//   const fileName = nanoid();
+//   const mediaRef = ref(
+//     storage,
+//     `${path}/${fileName}${mediaType === 'image' ? '.jpeg' : '.m4a'}`,
+//   );
+//   const snapshot = await uploadBytes(mediaRef, blob, {
+//     contentType: mediaType === 'image' ? 'image/jpeg' : 'audio/m4a',
+//   });
+//   blob.close();
+//   const url = await getDownloadURL(snapshot.ref);
+//   return {url, fileName};
+// }
+// }
