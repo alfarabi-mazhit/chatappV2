@@ -1,40 +1,24 @@
-import React, { useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  Button,
-  TextInput,
-  Image,
-  SafeAreaView,
-  TouchableOpacity,
-  StatusBar,
-  Alert,
-} from "react-native";
-import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
-import { auth } from "../config/firebase";
+import React, {useState} from 'react';
+import {StyleSheet, Text, View, TextInput, Image, SafeAreaView, TouchableOpacity, StatusBar, Alert} from 'react-native';
+import {createUserWithEmailAndPassword, sendEmailVerification} from 'firebase/auth';
+import {auth} from '../config/firebase';
 
-export default function Signup({ navigation }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+export default function Signup({navigation}) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [button, setButton] = useState(false);
-
   const onHandleSignup = async () => {
-    console.log("start");
-    if (email !== "" && password !== "") {
+    console.log('start');
+    if (email !== '' && password !== '') {
       setButton(true);
       await createUserWithEmailAndPassword(auth, email, password)
         .then(() => {
-          console.log("Signup success");
+          console.log('Signup success');
           sendEmailVerification(auth.currentUser).then(() => {
-            console.log("Verification email sent");
-            Alert.alert("Signup message","email verification has been send to email.");
+            Alert.alert('Signup message', 'email verification has been send to email.');
           });
         })
-        .catch(
-          (err) => Alert.alert("Signup error", err.message),
-          setButton(false)
-        );
+        .catch(err => Alert.alert('Signup error', err.message), setButton(false));
     }
   };
 
@@ -52,7 +36,7 @@ export default function Signup({ navigation }) {
           textContentType="emailAddress"
           autoFocus={false}
           value={email}
-          onChangeText={(text) => setEmail(text)}
+          onChangeText={text => setEmail(text)}
         />
         <TextInput
           style={styles.input}
@@ -62,34 +46,21 @@ export default function Signup({ navigation }) {
           secureTextEntry={true}
           textContentType="password"
           value={password}
-          onChangeText={(text) => setPassword(text)}
+          onChangeText={text => setPassword(text)}
         />
-        <TouchableOpacity
-          style={styles.button}
-          onPress={onHandleSignup}
-          disabled={button}
-        >
-          <Text style={{ fontWeight: "bold", color: "#fff", fontSize: 18 }}>
-            {" "}
-            Sign Up
-          </Text>
+        <TouchableOpacity style={styles.button} onPress={onHandleSignup} disabled={button}>
+          <Text style={{fontWeight: 'bold', color: '#fff', fontSize: 18}}> Sign Up</Text>
         </TouchableOpacity>
         <View
           style={{
             marginTop: 20,
-            flexDirection: "row",
-            alignItems: "center",
-            alignSelf: "center",
-          }}
-        >
-          <Text style={{ color: "gray", fontWeight: "600", fontSize: 14 }}>
-            Already have an account?{" "}
-          </Text>
-          <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-            <Text style={{ color: "#f57c00", fontWeight: "600", fontSize: 14 }}>
-              {" "}
-              Log In
-            </Text>
+            flexDirection: 'row',
+            alignItems: 'center',
+            alignSelf: 'center',
+          }}>
+          <Text style={{color: 'gray', fontWeight: '600', fontSize: 14}}>Already have an account? </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <Text style={{color: '#f57c00', fontWeight: '600', fontSize: 14}}> Log In</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -100,17 +71,17 @@ export default function Signup({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
   },
   title: {
     fontSize: 36,
-    fontWeight: "bold",
-    color: "orange",
-    alignSelf: "center",
+    fontWeight: 'bold',
+    color: 'orange',
+    alignSelf: 'center',
     paddingBottom: 24,
   },
   input: {
-    backgroundColor: "#F6F7FB",
+    backgroundColor: '#F6F7FB',
     height: 58,
     marginBottom: 20,
     fontSize: 16,
@@ -118,33 +89,33 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   backImage: {
-    backgroundColor: "#f57c00",
-    width: "100%",
+    backgroundColor: '#f57c00',
+    width: '100%',
     height: 340,
-    position: "absolute",
+    position: 'absolute',
     top: 0,
-    resizeMode: "cover",
+    resizeMode: 'cover',
   },
   whiteSheet: {
-    width: "100%",
-    height: "75%",
-    position: "absolute",
+    width: '100%',
+    height: '75%',
+    position: 'absolute',
     bottom: 0,
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderTopLeftRadius: 60,
     borderTopRightRadius: 60,
   },
   form: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: 'center',
     marginHorizontal: 30,
   },
   button: {
-    backgroundColor: "#f57c00",
+    backgroundColor: '#f57c00',
     height: 58,
     borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     marginTop: 40,
   },
 });

@@ -1,20 +1,8 @@
 import React, {useState, useContext} from 'react';
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  View,
-  Button,
-  TextInput,
-  Image,
-  SafeAreaView,
-  TouchableOpacity,
-  StatusBar,
-  Alert,
-} from 'react-native';
-import {signInWithEmailAndPassword, signInWithPhoneNumber} from 'firebase/auth';
+import {ActivityIndicator, StyleSheet, Text, View, TextInput, Image, SafeAreaView, TouchableOpacity, StatusBar, Alert} from 'react-native';
+import {signInWithEmailAndPassword} from 'firebase/auth';
 import {auth} from '../config/firebase';
-import {Context, Provider} from '../components/Context';
+import {Context} from '../components/Context';
 
 export default function Login({navigation}) {
   const {user, setUser} = useContext(Context);
@@ -60,14 +48,8 @@ export default function Login({navigation}) {
             value={password}
             onChangeText={text => setPassword(text)}
           />
-          <TouchableOpacity
-            style={styles.button}
-            onPress={onHandleLogin}
-            disabled={button}>
-            <Text style={{fontWeight: 'bold', color: '#fff', fontSize: 18}}>
-              {' '}
-              Log In
-            </Text>
+          <TouchableOpacity style={styles.button} onPress={onHandleLogin} disabled={button}>
+            <Text style={{fontWeight: 'bold', color: '#fff', fontSize: 18}}> Log In</Text>
           </TouchableOpacity>
           <View
             style={{
@@ -76,9 +58,7 @@ export default function Login({navigation}) {
               alignItems: 'center',
               alignSelf: 'center',
             }}>
-            <Text style={{color: 'gray', fontWeight: '600', fontSize: 14}}>
-              Don't have an account?{' '}
-            </Text>
+            <Text style={{color: 'gray', fontWeight: '600', fontSize: 14}}>Don't have an account? </Text>
             <TouchableOpacity
               onPress={() =>
                 navigation.navigate('Signup', {

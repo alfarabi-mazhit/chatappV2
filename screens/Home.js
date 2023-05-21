@@ -2,34 +2,18 @@ import React, {useEffect, useContext, useRef} from 'react';
 import {View, TouchableOpacity, Text, Image, StyleSheet} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import colors from '../colors';
-import {
-  onSnapshot,
-  collection,
-  where,
-  query,
-  orderBy,
-} from '@firebase/firestore';
+import {onSnapshot, collection, where, query, orderBy} from '@firebase/firestore';
 import {auth, database, timestamp} from '../config/firebase';
 import {signOut} from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  Context,
-  useContacts,
-  ListItem,
-  WidthInView,
-  LetterByLetterText,
-} from '../components';
+import {Context, useContacts, ListItem, WidthInView, LetterByLetterText} from '../components';
 import Icon from 'react-native-vector-icons/Entypo';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 function LogoTitle() {
   return (
-    <WidthInView
-      style={Object.assign({}, styles.chatButton, styles.headerChatButton)}>
-      <LetterByLetterText
-        textStyle={{color: '#fff', fontSize: 18, fontWeight: 'bold'}}>
-        Chats
-      </LetterByLetterText>
+    <WidthInView style={Object.assign({}, styles.chatButton, styles.headerChatButton)}>
+      <LetterByLetterText textStyle={{color: '#fff', fontSize: 18, fontWeight: 'bold'}}>Chats</LetterByLetterText>
       <Icon name="chat" size={24} color={colors.lightGray} />
     </WidthInView>
   );
@@ -60,9 +44,7 @@ const Home = () => {
     (async () => {
       try {
         // await AsyncStorage.clear();
-        let storedRooms = JSON.parse(
-          await AsyncStorage.getItem(`rooms_${auth.currentUser.uid}`),
-        );
+        let storedRooms = JSON.parse(await AsyncStorage.getItem(`rooms_${auth.currentUser.uid}`));
         // console.log('storedRooms', storedRooms);
         if (storedRooms !== null && storedRooms?.length > 0) {
           setRooms(storedRooms);
@@ -79,33 +61,18 @@ const Home = () => {
   useEffect(() => {
     (async () => {
       try {
-        let lastUpdatedAt = await AsyncStorage.getItem(
-          `${LAST_UPDATED_AT}_${auth.currentUser.uid}`,
-        );
-        console.log(
-          'lastupd',
-          timestamp(new Date(JSON.parse(lastUpdatedAt)).getTime()),
-        );
+        let lastUpdatedAt = await AsyncStorage.getItem(`${LAST_UPDATED_AT}_${auth.currentUser.uid}`);
+        console.log('lastupd', timestamp(new Date(JSON.parse(lastUpdatedAt)).getTime()));
         const queryWithLastUpdatedAt =
           lastUpdatedAt != null
-            ? query(
-                chatsQuery,
-                where(
-                  'lastMessage.createdAt',
-                  '>',
-                  timestamp(new Date(JSON.parse(lastUpdatedAt)).getTime()),
-                ),
-              )
+            ? query(chatsQuery, where('lastMessage.createdAt', '>', timestamp(new Date(JSON.parse(lastUpdatedAt)).getTime())))
             : chatsQuery;
         const unsubscribe = onSnapshot(queryWithLastUpdatedAt, async querySnapshot => {
           const parsedChats = querySnapshot.docs.map((doc, i) => {
             console.log(doc.data().participants.find(p => p.email));
 
             const userB =
-              doc
-                .data()
-                .participants.find(p => p.email !== currentUser.email) ||
-              doc.data().participants.find(p => p.email === currentUser.email);
+              doc.data().participants.find(p => p.email !== currentUser.email) || doc.data().participants.find(p => p.email === currentUser.email);
 
             return {
               ...doc.data(),
@@ -116,24 +83,12 @@ const Home = () => {
           console.log(parsedChats, 'parsedChats');
           if (parsedChats.length > 0) {
             const lastChatUpdatedAt = parsedChats[0].lastMessage.createdAt;
-            console.log(
-              'NEW lastUPD',
-              lastChatUpdatedAt.toDate(),
-              lastChatUpdatedAt,
-            );
-            await AsyncStorage.setItem(
-              `${LAST_UPDATED_AT}_${auth.currentUser.uid}`,
-              JSON.stringify(lastChatUpdatedAt.toDate()),
-            );
-            let storedRooms =
-              JSON.parse(
-                await AsyncStorage.getItem(`rooms_${auth.currentUser.uid}`),
-              ) || [];
+            console.log('NEW lastUPD', lastChatUpdatedAt.toDate(), lastChatUpdatedAt);
+            await AsyncStorage.setItem(`${LAST_UPDATED_AT}_${auth.currentUser.uid}`, JSON.stringify(lastChatUpdatedAt.toDate()));
+            let storedRooms = JSON.parse(await AsyncStorage.getItem(`rooms_${auth.currentUser.uid}`)) || [];
             const updatedRooms = [...storedRooms];
             for (let i = parsedChats.length - 1; i >= 0; i--) {
-              const roomIndex = updatedRooms.findIndex(
-                room => room.id === parsedChats[i].id,
-              );
+              const roomIndex = updatedRooms.findIndex(room => room.id === parsedChats[i].id);
               if (roomIndex !== -1) {
                 updatedRooms.splice(roomIndex, 1);
                 updatedRooms.unshift(parsedChats[i]);
@@ -141,14 +96,9 @@ const Home = () => {
                 updatedRooms.unshift(parsedChats[i]);
               }
             }
-            // console.log(rooms, 'rooms');
             console.log(updatedRooms, 'updr');
-            await AsyncStorage.setItem(
-              `rooms_${auth.currentUser.uid}`,
-              JSON.stringify(updatedRooms),
-            );
+            await AsyncStorage.setItem(`rooms_${auth.currentUser.uid}`, JSON.stringify(updatedRooms));
             setRooms(updatedRooms);
-            // setRooms(parsedChats);
           }
         });
         unsubscribeRef.current = unsubscribe;
@@ -162,8 +112,7 @@ const Home = () => {
   useEffect(() => {
     navigation.setOptions({
       headerLeft: () => (
-        <TouchableOpacity
-          style={Object.assign({}, styles.chatButton, {marginLeft: 15})}>
+        <TouchableOpacity style={Object.assign({}, styles.chatButton, {marginLeft: 15})}>
           <FontAwesome name="star" size={24} color={'#fff'} />
         </TouchableOpacity>
       ),
@@ -173,12 +122,7 @@ const Home = () => {
             marginRight: 10,
           }}
           onPress={onSignOut}>
-          <AntDesign
-            name="logout"
-            size={24}
-            color={colors.gray}
-            style={{marginRight: 10}}
-          />
+          <AntDesign name="logout" size={24} color={colors.gray} style={{marginRight: 10}} />
         </TouchableOpacity>
       ),
       headerTitle: props => <LogoTitle />,
@@ -212,9 +156,7 @@ const Home = () => {
             user={getUserB(room.userB, contacts)}></ListItem>
         ))}
       </View>
-      <TouchableOpacity
-        onPress={() => navigation.navigate('Contacts')}
-        style={Object.assign({}, styles.chatButton, styles.chatButton1)}>
+      <TouchableOpacity onPress={() => navigation.navigate('Contacts')} style={Object.assign({}, styles.chatButton, styles.chatButton1)}>
         <Icon name="plus" size={24} color={colors.lightGray} />
       </TouchableOpacity>
     </View>

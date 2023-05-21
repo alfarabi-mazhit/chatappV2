@@ -5,22 +5,8 @@ import {StyleSheet, View, ActivityIndicator} from 'react-native';
 import {Context} from '../components/Context';
 import {auth, database} from '../config/firebase';
 import QuickCrypto from 'react-native-quick-crypto';
-import {updateProfile} from '@firebase/auth';
-import {
-  doc,
-  setDoc,
-  getDoc,
-  updateDoc,
-  onSnapshot,
-  collection,
-  getDocs,
-  where,
-  query,
-  orderBy,
-  arrayUnion,
-} from '@firebase/firestore';
+import {doc, setDoc, getDoc, updateDoc, collection, getDocs, where, query} from '@firebase/firestore';
 const LoadingScreen = () => {
-  const {user, setUser} = useContext(Context);
   const {checking, setChecking} = useContext(Context);
   const [keyPair, setKeyPair] = useState(null);
 
@@ -32,12 +18,8 @@ const LoadingScreen = () => {
   }, [navigation]);
 
   const checkKeyPair = async () => {
-    const publicKey = JSON.parse(
-      await AsyncStorage.getItem('publicKey' + auth.currentUser.uid),
-    );
-    const privateKey = JSON.parse(
-      await AsyncStorage.getItem('privateKey' + auth.currentUser.uid),
-    );
+    const publicKey = JSON.parse(await AsyncStorage.getItem('publicKey' + auth.currentUser.uid));
+    const privateKey = JSON.parse(await AsyncStorage.getItem('privateKey' + auth.currentUser.uid));
     return publicKey && privateKey ? {publicKey, privateKey} : null;
   };
   const generateKeyPair = async () => {
@@ -57,29 +39,15 @@ const LoadingScreen = () => {
           },
         },
         async (err, publicKey, privateKey) => {
-          // Callback function
           if (!err) {
-            // Prints new asymmetric key pair
             console.log('Public Key is : ', publicKey);
             console.log('Private Key is: ', privateKey);
-            let enc = QuickCrypto.publicEncrypt(
-              publicKey,
-              Buffer.from('alfa', 'base64'),
-            );
+            let enc = QuickCrypto.publicEncrypt(publicKey, Buffer.from('alfa', 'base64'));
             console.log(enc.toString('base64'), 'proverka');
-            let dec = QuickCrypto.privateDecrypt(
-              privateKey,
-              Buffer.from(enc, 'base64'),
-            );
+            let dec = QuickCrypto.privateDecrypt(privateKey, Buffer.from(enc, 'base64'));
             console.log(dec.toString('base64'), 'proverka');
-            await AsyncStorage.setItem(
-              'publicKey' + auth.currentUser.uid,
-              JSON.stringify(publicKey),
-            );
-            await AsyncStorage.setItem(
-              'privateKey' + auth.currentUser.uid,
-              JSON.stringify(privateKey),
-            );
+            await AsyncStorage.setItem('publicKey' + auth.currentUser.uid, JSON.stringify(publicKey));
+            await AsyncStorage.setItem('privateKey' + auth.currentUser.uid, JSON.stringify(privateKey));
             resolve({publicKey, privateKey});
           } else {
             reject(err);
@@ -90,9 +58,7 @@ const LoadingScreen = () => {
   };
   const checkPublicKey = async () => {
     const currentUser = auth.currentUser;
-    const publicKey = JSON.parse(
-      await AsyncStorage.getItem('publicKey' + auth.currentUser.uid),
-    );
+    const publicKey = JSON.parse(await AsyncStorage.getItem('publicKey' + auth.currentUser.uid));
     const userProfile = await getUserProfile(currentUser.uid);
     console.log('ghv', userProfile?.publicKey !== publicKey);
     if (userProfile && userProfile?.publicKey !== publicKey) {
@@ -113,42 +79,23 @@ const LoadingScreen = () => {
   };
 
   const updateUserPublicKey = async (userE, publicKey) => {
-    const roomsQuery = query(
-      collection(database, 'rooms'),
-      where('participantsArray', 'array-contains', userE),
-    );
+    const roomsQuery = query(collection(database, 'rooms'), where('participantsArray', 'array-contains', userE));
     const roomsSnapshot = await getDocs(roomsQuery);
     roomsSnapshot.forEach(async roomDoc => {
       const roomRef = doc(database, 'rooms', roomDoc.id);
       const participants = roomDoc.data().participants;
-      const participantIndex = Object.keys(participants).findIndex(
-        id => participants[id].email === userE,
-      );
-      const pI = Object.keys(participants).findIndex(
-        id => participants[id].email !== userE,
-      );
-      if(pI<0){
+      const participantIndex = Object.keys(participants).findIndex(id => participants[id].email === userE);
+      const pI = Object.keys(participants).findIndex(id => participants[id].email !== userE);
+      if (pI < 0) {
         pI = participantIndex;
       }
       console.log('partIn', participantIndex);
       const key = crypto.randomBytes(32); // 256-bit ключ
       const iv = crypto.randomBytes(16); // 128-bit вектор инициализации
-      await AsyncStorage.setItem(
-        'AESkey' + roomDoc.id.toString() + auth.currentUser.uid,
-        key.toString('base64'),
-      );
-      await AsyncStorage.setItem(
-        'AESiv' + roomDoc.id.toString() + auth.currentUser.uid,
-        iv.toString('base64'),
-      );
-      let encKey = crypto.publicEncrypt(
-        pI.publicKey,
-        Buffer.from(key, 'base64'),
-      );
-      let encIv = crypto.publicEncrypt(
-        pI.publicKey,
-        Buffer.from(iv, 'base64'),
-      );
+      await AsyncStorage.setItem('AESkey' + roomDoc.id.toString() + auth.currentUser.uid, key.toString('base64'));
+      await AsyncStorage.setItem('AESiv' + roomDoc.id.toString() + auth.currentUser.uid, iv.toString('base64'));
+      let encKey = crypto.publicEncrypt(pI.publicKey, Buffer.from(key, 'base64'));
+      let encIv = crypto.publicEncrypt(pI.publicKey, Buffer.from(iv, 'base64'));
       let keygen = {
         key: encKey.toString('base64'),
         iv: encIv.toString('base64'),
@@ -173,8 +120,6 @@ const LoadingScreen = () => {
 
   useEffect(() => {
     const loadKeyPair = async () => {
-      // await AsyncStorage.removeItem('publicKey' + auth.currentUser.uid);
-      // await AsyncStorage.removeItem('privateKey' + auth.currentUser.uid);
       const storedKeyPair = await checkKeyPair();
       console.log(storedKeyPair, 'mimi');
       if (storedKeyPair) {

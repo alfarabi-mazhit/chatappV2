@@ -6,7 +6,7 @@ import {TextInput, TouchableOpacity} from 'react-native-gesture-handler';
 import {pickImgg, uploadImage} from '../components/utils';
 import {auth, database} from '../config/firebase';
 import {updateProfile} from '@firebase/auth';
-import {doc, setDoc,updateDoc, getDoc} from 'firebase/firestore';
+import {doc, setDoc, updateDoc, getDoc} from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function SetProfile() {
@@ -54,13 +54,13 @@ export default function SetProfile() {
       const result = await pickImgg();
       if (!result.didCancel) {
         console.log(result);
-        Alert.alert('',result);
-        const uploadResult = await uploadImage(result.assets[0].uri, 'images/users/'+auth.currentUser.uid+'/');
+        Alert.alert('', result);
+        const uploadResult = await uploadImage(result.assets[0].uri, 'images/users/' + auth.currentUser.uid + '/');
         setSelectedImg(uploadResult.url);
       }
     } catch (error) {
       console.log(error);
-      Alert.alert('','Failed to get image' + error);
+      Alert.alert('', 'Failed to get image' + error);
     }
   }
 
@@ -102,15 +102,9 @@ export default function SetProfile() {
           disabled={button}>
           {!selectedImg ? (
             // <MaterialCommunityIcons size={45} name="camera-plus" />
-            <Image
-              source={{}}
-              style={{width: 100, borderRadius: 100, height: 100}}
-            />
+            <Image source={{}} style={{width: 100, borderRadius: 100, height: 100}} />
           ) : (
-            <Image
-              source={{uri: selectedImg}}
-              style={{width: 100, borderRadius: 100, height: 100}}
-            />
+            <Image source={{uri: selectedImg}} style={{width: 100, borderRadius: 100, height: 100}} />
           )}
         </TouchableOpacity>
         <TextInput
@@ -127,12 +121,7 @@ export default function SetProfile() {
           }}
         />
         <View style={{marginTop: 20, width: 120}}>
-          <Button
-            title="продолжить"
-            color={'#f57c00'}
-            disabled={button || !displayName}
-            onPress={handlePress}
-          />
+          <Button title="продолжить" color={'#f57c00'} disabled={button || !displayName} onPress={handlePress} />
         </View>
       </FadeInView>
     </View>
