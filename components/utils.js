@@ -21,7 +21,7 @@ export async function pickImgg() {
     });
   });
 }
-export async function pickImg(userId, roomId) {
+export async function pickImg() {
   return new Promise((resolve, reject) => {
     const options = {
       mediaType: 'photo',
@@ -32,13 +32,8 @@ export async function pickImg(userId, roomId) {
         reject(new Error('User cancelled image picker or encountered an error'));
       } else {
         const {uri} = response.assets[0];
-        const userDirectory = `${RNFS.DocumentDirectoryPath}/users/${userId}`;
-        const roomDirectory = `${userDirectory}/rooms/${roomId}`;
-        if (!(await RNFS.exists(roomDirectory))) {
-          await RNFS.mkdir(roomDirectory, {intermediates: true});
-        }
         const fileName = nanoid();
-        const filePath = `${roomDirectory}/${fileName}.jpeg`;
+        const filePath = uri;
         resolve({filePath, fileName});
       }
     });
@@ -70,10 +65,8 @@ export async function uploadMedia(roomId, uri, path, mediaType, fName) {
   try {
     const Data = await RNFS.readFile(uri, 'base64');
     const ArrayBuffer = Buffer.from(Data, 'base64');
-    let key = (await AsyncStorage.getItem('AESkey' + roomId.toString() + auth.currentUser.uid)) || null;
-    let iv = (await AsyncStorage.getItem('AESiv' + roomId.toString() + auth.currentUser.uid)) || null;
-    key = Buffer.from(key, 'base64');
-    iv = Buffer.from(iv, 'base64');
+    const key = crypto.randomBytes(32); // 256-bit ключ
+    const iv = crypto.randomBytes(16); // 128-bit вектор инициализации
     const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
     const encrypted = Buffer.concat([cipher.update(ArrayBuffer), cipher.final()]);
     await RNFS.writeFile(uri + `${mediaType === 'image' ? '.jpeg' : '.mp4'}`, encrypted.toString('base64'), 'base64');
@@ -99,7 +92,7 @@ export async function uploadMedia(roomId, uri, path, mediaType, fName) {
     blob.close();
     const url = await getDownloadURL(snapshot.ref);
     console.log('firefire', url);
-    return {url, fileName};
+    return {url, fileName, key, iv};
   } catch (error) {
     Alert.alert('', error);
   }

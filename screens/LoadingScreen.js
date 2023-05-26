@@ -90,24 +90,24 @@ const LoadingScreen = () => {
         pI = participantIndex;
       }
       console.log('partIn', participantIndex);
-      const key = crypto.randomBytes(32); // 256-bit ключ
-      const iv = crypto.randomBytes(16); // 128-bit вектор инициализации
-      await AsyncStorage.setItem('AESkey' + roomDoc.id.toString() + auth.currentUser.uid, key.toString('base64'));
-      await AsyncStorage.setItem('AESiv' + roomDoc.id.toString() + auth.currentUser.uid, iv.toString('base64'));
-      let encKey = crypto.publicEncrypt(pI.publicKey, Buffer.from(key, 'base64'));
-      let encIv = crypto.publicEncrypt(pI.publicKey, Buffer.from(iv, 'base64'));
-      let keygen = {
-        key: encKey.toString('base64'),
-        iv: encIv.toString('base64'),
-        createdby: auth.currentUser.email,
-      };
+      //const key = crypto.randomBytes(32); // 256-bit ключ
+      //const iv = crypto.randomBytes(16); // 128-bit вектор инициализации
+      //await AsyncStorage.setItem('AESkey' + roomDoc.id.toString() + auth.currentUser.uid, key.toString('base64'));
+      //await AsyncStorage.setItem('AESiv' + roomDoc.id.toString() + auth.currentUser.uid, iv.toString('base64'));
+      // let encKey = crypto.publicEncrypt(pI.publicKey, Buffer.from(key, 'base64'));
+      // let encIv = crypto.publicEncrypt(pI.publicKey, Buffer.from(iv, 'base64'));
+      // let keygen = {
+      //   key: encKey.toString('base64'),
+      //   iv: encIv.toString('base64'),
+      //   createdby: auth.currentUser.email,
+      // };
       if (participantIndex >= 0) {
         const updatedParticipants = [
           ...participants.slice(0, participantIndex),
           {...participants[participantIndex], publicKey: publicKey},
           ...participants.slice(participantIndex + 1),
         ];
-        await updateDoc(roomRef, {participants: updatedParticipants, keygen});
+        await updateDoc(roomRef, {participants: updatedParticipants});
       }
     });
   };

@@ -5,11 +5,11 @@ import Entypo from 'react-native-vector-icons/Entypo';
 import {pickImg, uploadMedia} from '../components/utils';
 import {GiftedChat, Send, Bubble, Time, Actions} from 'react-native-gifted-chat';
 import {collection, doc, setDoc, addDoc, getDoc, updateDoc, orderBy, query, onSnapshot, where} from '@firebase/firestore';
-import {timestamp} from '../config/firebase';
+import {timestamp,storage,auth, database} from '../config/firebase';
+import { ref, deleteObject } from "firebase/storage";
 import 'react-native-get-random-values';
 import {nanoid} from 'nanoid';
 import {HeaderBackButton} from '@react-navigation/elements';
-import {auth, database} from '../config/firebase';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import Avatar from '../components/Avatar';
 import ImageView from 'react-native-image-viewing';
@@ -34,7 +34,7 @@ export default function Chat() {
   const userB = route.params.user;
   const roomId = room ? room.id : randomId;
   const roomRef = doc(database, 'rooms', roomId);
-  let key, iv, cipher, decipher;
+  let cipher, decipher;
 
   function getUniqueMessages(messages) {
     const uniqueMessages = [];
@@ -71,21 +71,21 @@ export default function Chat() {
       if (userB.userDoc.photoURL) {
         userBData.photoURL = userB.userDoc.photoURL;
       }
-      key = crypto.randomBytes(32); // 256-bit ключ
-      iv = crypto.randomBytes(16); // 128-bit вектор инициализации
-      await AsyncStorage.setItem('AESkey' + roomId.toString() + auth.currentUser.uid, key.toString('base64'));
-      await AsyncStorage.setItem('AESiv' + roomId.toString() + auth.currentUser.uid, iv.toString('base64'));
-      let encKey = crypto.publicEncrypt(userBData.publicKey, Buffer.from(key, 'base64'));
-      let encIv = crypto.publicEncrypt(userBData.publicKey, Buffer.from(iv, 'base64'));
-      let keygen = {
-        key: encKey.toString('base64'),
-        iv: encIv.toString('base64'),
-        createdby: auth.currentUser.email,
-      };
+      // key = crypto.randomBytes(32); // 256-bit ключ
+      // iv = crypto.randomBytes(16); // 128-bit вектор инициализации
+      // await AsyncStorage.setItem('AESkey' + roomId.toString() + auth.currentUser.uid, key.toString('base64'));
+      // await AsyncStorage.setItem('AESiv' + roomId.toString() + auth.currentUser.uid, iv.toString('base64'));
+      // let encKey = crypto.publicEncrypt(userBData.publicKey, Buffer.from(key, 'base64'));
+      // let encIv = crypto.publicEncrypt(userBData.publicKey, Buffer.from(iv, 'base64'));
+      // let keygen = {
+      //   key: encKey.toString('base64'),
+      //   iv: encIv.toString('base64'),
+      //   createdby: auth.currentUser.email,
+      // };
       const roomData = {
         participants: [currentUserData, userBData],
         participantsArray: [currentUser.email, userB.email],
-        keygen,
+        // keygen,
       };
       try {
         console.log(roomRef);
@@ -97,28 +97,28 @@ export default function Chat() {
         console.log(error, 'fff');
       }
     }
-    if ((key == null || iv == null) && room) {
-      try {
-        let pk = await AsyncStorage.getItem('privatekey' + auth.currentUser.uid);
-        key = crypto.privateDecrypt(pk, Buffer.from(room.keygen.key, 'base64'));
-        iv = crypto.privateDecrypt(pk, Buffer.from(room.keygen.iv, 'base64'));
-      } catch (e) {
-        console.log(e);
-      }
-    }
+    // if ((key == null || iv == null) && room) {
+    //   try {
+    //     let pk = await AsyncStorage.getItem('privatekey' + auth.currentUser.uid);
+    //     key = crypto.privateDecrypt(pk, Buffer.from(room.keygen.key, 'base64'));
+    //     iv = crypto.privateDecrypt(pk, Buffer.from(room.keygen.iv, 'base64'));
+    //   } catch (e) {
+    //     console.log(e);
+    //   }
+    // }
   };
 
-  let getKeys = async () => {
-    try {
-      let pk = JSON.parse(await AsyncStorage.getItem('privateKey' + auth.currentUser.uid));
-      key = crypto.privateDecrypt(pk, Buffer.from(room.keygen.key, 'base64'));
-      iv = crypto.privateDecrypt(pk, Buffer.from(room.keygen.iv, 'base64'));
-      await AsyncStorage.setItem('AESkey' + roomId.toString() + auth.currentUser.uid, key.toString('base64'));
-      await AsyncStorage.setItem('AESiv' + roomId.toString() + auth.currentUser.uid, iv.toString('base64'));
-    } catch (e) {
-      console.log(e, 'jvh');
-    }
-  };
+  //let getKeys = async () => {
+  //   try {
+  //     let pk = JSON.parse(await AsyncStorage.getItem('privateKey' + auth.currentUser.uid));
+  //     key = crypto.privateDecrypt(pk, Buffer.from(room.keygen.key, 'base64'));
+  //     iv = crypto.privateDecrypt(pk, Buffer.from(room.keygen.iv, 'base64'));
+  //     await AsyncStorage.setItem('AESkey' + roomId.toString() + auth.currentUser.uid, key.toString('base64'));
+  //     await AsyncStorage.setItem('AESiv' + roomId.toString() + auth.currentUser.uid, iv.toString('base64'));
+  //   } catch (e) {
+  //     console.log(e, 'jvh');
+  //   }
+  // };
   useEffect(() => {
     (async () => {
       try {
@@ -134,16 +134,16 @@ export default function Chat() {
       } catch (error) {
         console.error('Error getting stored messages:', error);
       }
-      key = (await AsyncStorage.getItem('AESkey' + roomId.toString() + auth.currentUser.uid)) || null;
-      iv = (await AsyncStorage.getItem('AESiv' + roomId.toString() + auth.currentUser.uid)) || null;
-      console.log(key, iv, 'AESkeys');
-      if ((key == null || iv == null) && room) {
-        getKeys();
-      } else if (key != null && iv != null && room) {
-        key = Buffer.from(key, 'base64');
-        iv = Buffer.from(iv, 'base64');
-        console.log(key, iv, 'aeskeyss');
-      }
+      //key = (await AsyncStorage.getItem('AESkey' + roomId.toString() + auth.currentUser.uid)) || null;
+      //iv = (await AsyncStorage.getItem('AESiv' + roomId.toString() + auth.currentUser.uid)) || null;
+      //console.log(key, iv, 'AESkeys');
+      // if ((key == null || iv == null) && room) {
+      //   getKeys();
+      // } else if (key != null && iv != null && room) {
+      //   key = Buffer.from(key, 'base64');
+      //   iv = Buffer.from(iv, 'base64');
+      //   console.log(key, iv, 'aeskeyss');
+      // }
     })();
   }, []);
 
@@ -173,13 +173,13 @@ export default function Chat() {
           console.log('storedMessages', storedMessages);
           const updatedMessages = [...storedMessages];
           let c = 0;
-          if (key == null || iv == null) {
-            getKeys();
-          }
           for (let i = parsedMessages.length - 1; i >= 0; i--) {
             if (parsedMessages[i].user._id !== auth.currentUser.email) {
               if (parsedMessages[i].audio === undefined && parsedMessages[i].image === undefined) {
                 try {
+                  let pk = JSON.parse(await AsyncStorage.getItem('privateKey' + auth.currentUser.uid));
+                  let key = crypto.privateDecrypt(pk, Buffer.from(parsedMessages[i].key, 'base64'));
+                  let iv = crypto.privateDecrypt(pk, Buffer.from(parsedMessages[i].iv, 'base64'));
                   decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
                   parsedMessages[i].text =
                     Buffer.concat([decipher.update(Buffer.from(parsedMessages[i].text, 'base64')), decipher.final()]).toString() ||
@@ -218,19 +218,35 @@ export default function Chat() {
                   });
                 const Data = await RNFS.readFile(filePath, 'base64');
                 const ArrayBuffer = Buffer.from(Data, 'base64');
-                console.log('aes', key.toString('base64'), iv.toString('base64'));
+                let pk = JSON.parse(await AsyncStorage.getItem('privateKey' + auth.currentUser.uid));
+                let key = crypto.privateDecrypt(pk, Buffer.from(parsedMessages[i].key, 'base64'));
+                let iv = crypto.privateDecrypt(pk, Buffer.from(parsedMessages[i].iv, 'base64'));
                 decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
                 const decrypted = Buffer.concat([decipher.update(ArrayBuffer), decipher.final()]);
                 await RNFS.writeFile(filePath + `.${format}`, decrypted.toString('base64'), 'base64');
                 if (parsedMessages[i].image !== undefined) {
                   parsedMessages[i].image = filePath + `.${format}`;
+                  
                   console.log('IMAGEE');
                 } else if (parsedMessages[i].audio !== undefined) {
                   parsedMessages[i].audio = filePath + `.${format}`;
                   console.log('AUDIOO');
                 }
+                const mediaRef = ref(storage, `media/rooms/${roomId}/${parsedMessages[i]._id}.${format}`);
+                  deleteObject(mediaRef).then(() => {
+                    console.log('Документ успешно удален из Firebase Storage');
+                  }).catch((error) => {
+                    console.error('Ошибка при удалении документа из Firebase Storage:', error);
+                  });
               }
               updatedMessages.unshift(parsedMessages[i]);
+              roomMessagesRef.doc(parsedMessages[i]._id).delete()
+                .then(() => {
+                  console.log('Документ успешно удален из Firebase Firestore');
+                })
+                .catch((error) => {
+                  console.error('Ошибка при удалении документа из Firebase Firestore:', error);
+                });
               c++;
             }
           }
@@ -288,6 +304,16 @@ export default function Chat() {
       const roomDoc = await getDoc(roomRef);
       room = roomDoc.data();
     }
+    let key = crypto.randomBytes(32); // 256-bit ключ
+    let iv = crypto.randomBytes(16); // 128-bit вектор инициализации  
+    const participants = room.participants;
+      const participantIndex = Object.keys(participants).findIndex(id => participants[id].email === auth.currentUser.email);
+      const pI = Object.keys(participants).findIndex(id => participants[id].email !== auth.currentUser.email);
+      if (pI < 0) {
+        pI = participantIndex;
+      }
+    let encKey = crypto.publicEncrypt(pI.publicKey, Buffer.from(key, 'base64'));
+    let encIv = crypto.publicEncrypt(pI.publicKey, Buffer.from(iv, 'base64'));   
     cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
     let enc = Buffer.concat([cipher.update(text), cipher.final()]).toString('base64');
     await Promise.all([
@@ -295,6 +321,8 @@ export default function Chat() {
         _id,
         createdAt,
         text: enc,
+        key: encKey,
+        iv: encIv,
         user,
       }),
       updateDoc(roomRef, {
@@ -351,25 +379,6 @@ export default function Chat() {
             <Entypo name="mic" size={27} color="white" />
           </View>
         </TouchableOpacity>
-        {/* <TouchableOpacity
-          onPressIn={() => playAudio()}
-          onPressOut={() => stopAudio()}>
-          <View
-            style={{
-              marginBottom: 2,
-              marginRight: 20,
-              borderRadius: 100,
-              borderColor: 'transparent',
-              borderWidth: 1,
-              paddingLeft: 10,
-              paddingRight: 10,
-              paddingTop: 10,
-              paddingBottom: 10,
-              backgroundColor: '#f57c00',
-            }}>
-            <Entypo name="mic" size={27} color="black" />
-          </View>
-        </TouchableOpacity> */}
       </>
     );
   }
@@ -407,11 +416,21 @@ export default function Chat() {
   }
   async function sendMedia(uri, mediaType, time, fName) {
     console.log('myurl', uri);
-    const {url, fileName} = await uploadMedia(roomId, uri, `media/rooms/${roomId}`, mediaType, fName);
+    const {url, fileName, key, iv} = await uploadMedia(roomId, uri, `media/rooms/${roomId}`, mediaType, fName);
+    const participants = room.participants;
+      const participantIndex = Object.keys(participants).findIndex(id => participants[id].email === auth.currentUser.email);
+      const pI = Object.keys(participants).findIndex(id => participants[id].email !== auth.currentUser.email);
+      if (pI < 0) {
+        pI = participantIndex;
+      }
+    let encKey = crypto.publicEncrypt(pI.publicKey, Buffer.from(key, 'base64'));
+    let encIv = crypto.publicEncrypt(pI.publicKey, Buffer.from(iv, 'base64')); 
     const message = {
       _id: fileName,
       text: '',
       createdAt: new Date(),
+      key: encKey,
+      iv: encIv,
       user: {
         name: auth?.currentUser?.displayName,
         _id: auth?.currentUser?.email,
@@ -489,7 +508,7 @@ export default function Chat() {
     if (!room) {
       await initializeChat();
     }
-    const {filePath, fileName} = await pickImg(auth.currentUser.uid, roomId);
+    const {filePath, fileName} = await pickImg();
     // console.log(filePath, 'filep', filePath && fileName);
     if (filePath && fileName) {
       console.log(filePath, 'filep');
