@@ -1,5 +1,6 @@
 import React, {useContext, useEffect} from 'react';
-import {NavigationContainer} from '@react-navigation/native';
+import {NavigationContainer,} from '@react-navigation/native';
+import {Alert} from 'react-native';
 import {createStackNavigator} from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {onAuthStateChanged} from 'firebase/auth';
@@ -11,6 +12,7 @@ import Chat from './screens/Chat';
 import Home from './screens/Home';
 import SetProfile from './screens/SetProfile';
 import Contacts from './screens/Contacts';
+import About from './screens/About';
 import LoadingScreen from './screens/LoadingScreen';
 const Stack = createStackNavigator();
 
@@ -24,6 +26,7 @@ function ChatStack() {
       <Stack.Screen name="Home" component={Home} />
       <Stack.Screen name="Contacts" component={Contacts} />
       <Stack.Screen name="Chat" component={Chat} />
+      <Stack.Screen name="About" component={About} />
     </Stack.Navigator>
   );
 }
@@ -44,13 +47,13 @@ function RootNavigator() {
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async authenticatedUser => {
       console.log(authenticatedUser);
-      // if (authenticatedUser && !authenticatedUser.emailVerified) {
-      //   Alert.alert(
-      //     'Email not verified',
-      //     'Please verify your email before logging in.',
-      //   );
-      //   auth.signOut();
-      // }
+      if (authenticatedUser && !authenticatedUser.emailVerified) {
+        Alert.alert(
+          'Email not verified',
+          'Please verify your email before logging in.',
+        );
+        auth.signOut();
+      }
       authenticatedUser
         ? (await AsyncStorage.setItem('user', JSON.stringify(authenticatedUser)), setUser(authenticatedUser))
         : (await AsyncStorage.removeItem('user'), setUser(null));

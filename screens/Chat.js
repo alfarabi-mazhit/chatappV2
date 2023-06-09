@@ -1,10 +1,10 @@
 import React, {useState, useEffect, useLayoutEffect, useCallback} from 'react';
 import {TouchableOpacity, Text, View, StyleSheet, Image} from 'react-native';
-import 'dayjs/locale/kk';
+// import 'dayjs/locale/kk';
 import Entypo from 'react-native-vector-icons/Entypo';
 import {pickImg, uploadMedia} from '../components/utils';
 import {GiftedChat, Send, Bubble, Time, Actions} from 'react-native-gifted-chat';
-import {collection, doc, setDoc, addDoc, getDoc, updateDoc, orderBy, query, onSnapshot, where} from '@firebase/firestore';
+import {collection, doc, setDoc, addDoc, getDoc, deleteDoc, updateDoc, orderBy, query, onSnapshot, where} from '@firebase/firestore';
 import {timestamp,storage,auth, database} from '../config/firebase';
 import { ref, deleteObject } from "firebase/storage";
 import 'react-native-get-random-values';
@@ -159,6 +159,7 @@ export default function Chat() {
         const parsedMessages = querySnapshot.docs.map(doc => {
           console.log('msg');
           return {
+            docId: doc.id,
             ...doc.data(),
             text: doc.data().text,
             createdAt: doc.data().createdAt.toDate(),
@@ -180,14 +181,17 @@ export default function Chat() {
                   let pk = JSON.parse(await AsyncStorage.getItem('privateKey' + auth.currentUser.uid));
                   let key = crypto.privateDecrypt(pk, Buffer.from(parsedMessages[i].key, 'base64'));
                   let iv = crypto.privateDecrypt(pk, Buffer.from(parsedMessages[i].iv, 'base64'));
+                  console.log(key,'alek',iv);
                   decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
                   parsedMessages[i].text =
                     Buffer.concat([decipher.update(Buffer.from(parsedMessages[i].text, 'base64')), decipher.final()]).toString() ||
                     parsedMessages[i].text;
+                    console.log(parsedMessages[i].text);
                 } catch (error) {
                   console.log(error);
                 }
               } else {
+                try {
                 const userDirectory = `file://${RNFS.DocumentDirectoryPath}/users/${auth.currentUser.uid}`;
                 const roomDirectory = `${userDirectory}/rooms/${roomId}`;
                 if (!(await RNFS.exists(roomDirectory))) {
@@ -226,7 +230,6 @@ export default function Chat() {
                 await RNFS.writeFile(filePath + `.${format}`, decrypted.toString('base64'), 'base64');
                 if (parsedMessages[i].image !== undefined) {
                   parsedMessages[i].image = filePath + `.${format}`;
-                  
                   console.log('IMAGEE');
                 } else if (parsedMessages[i].audio !== undefined) {
                   parsedMessages[i].audio = filePath + `.${format}`;
@@ -238,15 +241,19 @@ export default function Chat() {
                   }).catch((error) => {
                     console.error('Ошибка при удалении документа из Firebase Storage:', error);
                   });
+                } catch (error) {
+                  console.log(error);
+                }
               }
               updatedMessages.unshift(parsedMessages[i]);
-              roomMessagesRef.doc(parsedMessages[i]._id).delete()
-                .then(() => {
-                  console.log('Документ успешно удален из Firebase Firestore');
+              deleteDoc(doc(roomMessagesRef, parsedMessages[i].docId))
+                .then((e) => {
+                  console.log('Документ успешно удален из Firebase Firestore'+e);
                 })
                 .catch((error) => {
                   console.error('Ошибка при удалении документа из Firebase Firestore:', error);
                 });
+              console.log('rabiiii');
               c++;
             }
           }
@@ -312,17 +319,24 @@ export default function Chat() {
       if (pI < 0) {
         pI = participantIndex;
       }
-    let encKey = crypto.publicEncrypt(pI.publicKey, Buffer.from(key, 'base64'));
-    let encIv = crypto.publicEncrypt(pI.publicKey, Buffer.from(iv, 'base64'));   
+    console.log(key,'asdasd',participants[pI]);
+    let encKey = crypto.publicEncrypt(participants[pI].publicKey, Buffer.from(key, 'base64'));
+    let encIv = crypto.publicEncrypt(participants[pI].publicKey, Buffer.from(iv, 'base64'));   
     cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
     let enc = Buffer.concat([cipher.update(text), cipher.final()]).toString('base64');
+    console.log('akkk',_id,
+      createdAt,
+       enc,
+      encKey.toString('base64'),
+      encIv.toString('base64'),
+      user,);
     await Promise.all([
       addDoc(roomMessagesRef, {
         _id,
         createdAt,
         text: enc,
-        key: encKey,
-        iv: encIv,
+        key: encKey.toString('base64'),
+        iv: encIv.toString('base64'),
         user,
       }),
       updateDoc(roomRef, {
@@ -356,7 +370,7 @@ export default function Chat() {
             paddingBottom: 10,
             backgroundColor: '#f57c00',
           }}>
-          <Text style={{color: '#fff', fontWeight: '600', fontSize: 14}}>Отправить</Text>
+          <Text style={{color: '#fff', fontWeight: '600', fontSize: 14}}>Send</Text>
         </View>
       </Send>
     ) : (
@@ -415,22 +429,28 @@ export default function Chat() {
     );
   }
   async function sendMedia(uri, mediaType, time, fName) {
-    console.log('myurl', uri);
+    console.log('myurl', uri, room.participants);
     const {url, fileName, key, iv} = await uploadMedia(roomId, uri, `media/rooms/${roomId}`, mediaType, fName);
+    if (!room) {
+      await initializeChat();
+    } else {
+      const roomDoc = await getDoc(roomRef);
+      room = roomDoc.data();
+    }
     const participants = room.participants;
       const participantIndex = Object.keys(participants).findIndex(id => participants[id].email === auth.currentUser.email);
       const pI = Object.keys(participants).findIndex(id => participants[id].email !== auth.currentUser.email);
       if (pI < 0) {
         pI = participantIndex;
       }
-    let encKey = crypto.publicEncrypt(pI.publicKey, Buffer.from(key, 'base64'));
-    let encIv = crypto.publicEncrypt(pI.publicKey, Buffer.from(iv, 'base64')); 
+    let encKey = crypto.publicEncrypt(participants[pI].publicKey, Buffer.from(key, 'base64'));
+    let encIv = crypto.publicEncrypt(participants[pI].publicKey, Buffer.from(iv, 'base64')); 
     const message = {
       _id: fileName,
       text: '',
       createdAt: new Date(),
-      key: encKey,
-      iv: encIv,
+      key: encKey.toString('base64'),
+      iv: encIv.toString('base64'),
       user: {
         name: auth?.currentUser?.displayName,
         _id: auth?.currentUser?.email,
@@ -477,7 +497,9 @@ export default function Chat() {
     audioRecorderPlayer.removeRecordBackListener();
     console.log('stop', audioPath);
     await audioRecorderPlayer.stopRecorder();
-    sendMedia(audioPath, 'audio', recordTime);
+    if(recordTime>=1){
+      sendMedia(audioPath, 'audio', recordTime);
+    }
     setRecordTime(0);
   };
 
@@ -535,6 +557,7 @@ export default function Chat() {
       messages={messages}
       showAvatarForEveryMessage={false}
       showUserAvatar={false}
+      renderAvatar={null}
       textInputProps={{autoCapitalize: 'none'}}
       alwaysShowSend
       locale="kk"

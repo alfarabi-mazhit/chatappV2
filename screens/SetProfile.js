@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function SetProfile() {
   const navigation = useNavigation();
   const [displayName, setDisplayName] = useState('');
+  const [firebaseImg, setFirebaseImg] = useState(null);
   const [selectedImg, setSelectedImg] = useState(null);
   const [button, setButton] = useState(false);
   useEffect(() => {
@@ -24,8 +25,8 @@ export default function SetProfile() {
     setButton(true);
     const user = auth.currentUser;
     let photoURL;
-    if (selectedImg) {
-      photoURL = selectedImg;
+    if (firebaseImg) {
+      photoURL = firebaseImg;
     }
     const userData = {
       displayName,
@@ -54,9 +55,9 @@ export default function SetProfile() {
       const result = await pickImgg();
       if (!result.didCancel) {
         console.log(result);
-        Alert.alert('', result);
-        const uploadResult = await uploadImage(result.assets[0].uri, 'images/users/' + auth.currentUser.uid + '/');
-        setSelectedImg(uploadResult.url);
+        const uploadResult = await uploadImage(result.assets[0].uri, 'images/users/' + auth.currentUser.uid + '/','profilePicture.jpeg');
+        setFirebaseImg(uploadResult.url);
+        setSelectedImg(result.assets[0].uri);
       }
     } catch (error) {
       console.log(error);
@@ -79,14 +80,14 @@ export default function SetProfile() {
           marginTop: 90,
           padding: 35,
         }}>
-        <Text style={{fontSize: 22}}>Информация профиля</Text>
+        <Text style={{fontSize: 22}}>Profile Info</Text>
         <Text
           style={{
             fontSize: 14,
             paddingTop: 20,
             textAlign: 'center',
           }}>
-          Введите ваше имя пользователя и фото:
+          Insert your username and avatar:
         </Text>
         <TouchableOpacity
           onPress={handleProfilePicture}
@@ -108,7 +109,7 @@ export default function SetProfile() {
           )}
         </TouchableOpacity>
         <TextInput
-          placeholder="Имя пользователя"
+          placeholder="username"
           value={displayName}
           onChangeText={setDisplayName}
           style={{
@@ -121,7 +122,7 @@ export default function SetProfile() {
           }}
         />
         <View style={{marginTop: 20, width: 120}}>
-          <Button title="продолжить" color={'#f57c00'} disabled={button || !displayName} onPress={handlePress} />
+          <Button title="CONTINUE" color={'#f57c00'} disabled={button || !displayName} onPress={handlePress} />
         </View>
       </FadeInView>
     </View>

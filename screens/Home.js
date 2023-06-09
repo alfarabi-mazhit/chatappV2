@@ -112,7 +112,7 @@ const Home = () => {
   useEffect(() => {
     navigation.setOptions({
       headerLeft: () => (
-        <TouchableOpacity style={Object.assign({}, styles.chatButton, {marginLeft: 15})}>
+        <TouchableOpacity onPress={()=>navigation.navigate('About')} style={Object.assign({}, styles.chatButton, {marginLeft: 15})}>
           <FontAwesome name="star" size={24} color={'#fff'} />
         </TouchableOpacity>
       ),
